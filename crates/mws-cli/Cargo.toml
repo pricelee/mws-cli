@@ -28,3 +28,15 @@ assert_cmd.workspace = true
 predicates.workspace = true
 tempfile.workspace = true
 wiremock.workspace = true
+
+[features]
+default = []
+test-helpers = []
+
+[[test]]
+name = "auth_login"
+required-features = ["test-helpers"]
+
+[[test]]
+name = "whoami"
+required-features = ["test-helpers"]

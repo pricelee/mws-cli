@@ -1,3 +1,5 @@
+#![cfg(feature = "test-helpers")]
+
 use assert_cmd::Command;
 use predicates::str::contains;
 use wiremock::matchers::{method, path};

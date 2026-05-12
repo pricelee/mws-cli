@@ -24,7 +24,8 @@ pub struct Cli {
     /// Override the Graph base URL (hidden; for tests).
     #[arg(long, global = true, hide = true)]
     pub graph_base: Option<String>,
-    /// Override the config directory (hidden; for tests).
+    /// Override the config directory (test helper; only compiled with --features test-helpers).
+    #[cfg(feature = "test-helpers")]
     #[arg(long, global = true, hide = true)]
     pub config_dir: Option<std::path::PathBuf>,
 

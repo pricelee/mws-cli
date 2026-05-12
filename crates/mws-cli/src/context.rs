@@ -19,16 +19,27 @@ pub struct CliContext {
 
 impl CliContext {
     pub fn build(args: &crate::cli::Cli) -> anyhow::Result<Self> {
-        let (config_dir, vault_service) = if let Some(dir) = args.config_dir.clone() {
-            // Test override: derive a deterministic, unique service name from the
-            // directory path so parallel test runs each get their own Windows
-            // Credential Manager entry and cannot collide.
-            let svc = format!("mws-test-{}", fnv1a_hex(dir.to_string_lossy().as_bytes()));
-            (dir, svc)
-        } else {
-            let proj = directories::ProjectDirs::from("com", "mws", "mws")
-                .ok_or_else(|| anyhow::anyhow!("no config dir"))?;
-            (proj.config_dir().to_path_buf(), "mws".to_string())
+        let (config_dir, vault_service) = {
+            #[cfg(feature = "test-helpers")]
+            {
+                if let Some(dir) = args.config_dir.clone() {
+                    // Test override: derive a deterministic, unique service name from the
+                    // directory path so parallel test runs each get their own Windows
+                    // Credential Manager entry and cannot collide.
+                    let svc = format!("mws-test-{}", fnv1a_hex(dir.to_string_lossy().as_bytes()));
+                    (dir, svc)
+                } else {
+                    let proj = directories::ProjectDirs::from("com", "mws", "mws")
+                        .ok_or_else(|| anyhow::anyhow!("no config dir"))?;
+                    (proj.config_dir().to_path_buf(), "mws".to_string())
+                }
+            }
+            #[cfg(not(feature = "test-helpers"))]
+            {
+                let proj = directories::ProjectDirs::from("com", "mws", "mws")
+                    .ok_or_else(|| anyhow::anyhow!("no config dir"))?;
+                (proj.config_dir().to_path_buf(), "mws".to_string())
+            }
         };
         std::fs::create_dir_all(&config_dir)?;
         let vault: Arc<dyn Vault> = Arc::new(DiskVault::new(config_dir.join("accounts"), &vault_service));
@@ -63,6 +74,7 @@ impl CliContext {
 /// FNV-1a 64-bit hash — deterministic across processes and platforms.
 /// Used to derive a unique Windows Credential Manager service name from a
 /// test-supplied config-dir path so parallel test invocations cannot collide.
+#[cfg(feature = "test-helpers")]
 fn fnv1a_hex(data: &[u8]) -> String {
     const FNV_OFFSET: u64 = 14_695_981_039_346_656_037;
     const FNV_PRIME: u64 = 1_099_511_628_211;
