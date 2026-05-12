@@ -16,3 +16,4 @@ rand.workspace = true
 [dev-dependencies]
 wiremock.workspace = true
 tokio = { workspace = true, features = ["test-util", "macros"] }
+tempfile.workspace = true

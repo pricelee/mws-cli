@@ -8,4 +8,6 @@ pub enum GraphError {
     Api { status: u16, code: String, message: String },
     #[error("serde: {0}")]
     Serde(#[from] serde_json::Error),
+    #[error("io: {0}")]
+    Io(#[from] std::io::Error),
 }

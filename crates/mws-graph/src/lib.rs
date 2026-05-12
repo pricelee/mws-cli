@@ -2,6 +2,7 @@
 
 pub mod error;
 pub mod paging;
+pub mod upload;
 
 use mws_auth::account::Account;
 use mws_auth::Endpoints as TokenEndpoints;
