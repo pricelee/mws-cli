@@ -35,7 +35,12 @@ fn endpoints_for(ctx: &CliContext, args: &LoginArgs) -> Endpoints {
 async fn login(ctx: &CliContext, args: LoginArgs) -> anyhow::Result<()> {
     let http = reqwest::Client::new();
     let endpoints = endpoints_for(ctx, &args);
-    let scopes: Vec<String> = DEFAULT_SCOPES.iter().map(|s| s.to_string()).collect();
+    let mut scopes: Vec<String> = DEFAULT_SCOPES.iter().map(|s| s.to_string()).collect();
+    for s in &args.scopes {
+        if !scopes.iter().any(|existing| existing == s) {
+            scopes.push(s.clone());
+        }
+    }
     let mut account = Account::new(&ctx.account_name, &ctx.tenant, &ctx.client_id, scopes.clone());
 
     if args.device || !is_graphical_desktop() {

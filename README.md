@@ -24,12 +24,40 @@ mws whoami
 mws --output json whoami | jq .userPrincipalName
 ```
 
+## Scopes
+
+`mws auth login` requests `User.Read`, `offline_access`, `openid`, `profile` by default — enough for `mws whoami`. Other commands need additional scopes you grant with `--scope`:
+
+| Command | Extra scope |
+|---|---|
+| `mws mail send` | `Mail.Send` |
+| `mws drive cp` (upload) | `Files.ReadWrite` (any folder) |
+| `mws raw GET /me/messages` | `Mail.Read` |
+| `mws raw GET /me/events` | `Calendars.Read` |
+
+Request multiple at once:
+
+```sh
+mws auth login --scope Mail.Send --scope Files.ReadWrite
+```
+
+You can re-run `mws auth login` later with additional scopes — Microsoft prompts for incremental consent.
+
 ## Manual smoke test (real tenant)
 
 1. `cargo build --release`
-2. `target/release/mws auth login --tenant common`
+2. `target/release/mws auth login --scope Mail.Send --scope Files.ReadWrite`
 3. Complete the flow in your browser (or follow the device-code prompt).
 4. `target/release/mws whoami` should print your `displayName`, `userPrincipalName`, and `mail`.
+
+### Shell quoting note (Windows cmd vs PowerShell)
+
+URLs with `$` (OData query like `$top`, `$select`) need different quoting:
+
+- **cmd.exe**: use double-quotes — `mws raw GET "/me/messages?$top=3"`
+- **PowerShell**: use single-quotes — `mws raw GET '/me/messages?$top=3'`
+
+cmd treats `'` as a literal character, so `mws raw GET '/path?...'` includes the quotes in the URL and the request fails.
 
 ## Layout
 

@@ -154,6 +154,12 @@ pub struct LoginArgs {
     /// Force browser auth-code+PKCE flow.
     #[arg(long, conflicts_with = "device")]
     pub code: bool,
+    /// Additional OAuth scope to request, in addition to the baseline
+    /// (User.Read, offline_access, openid, profile). Repeatable.
+    /// Common values: Mail.Send (for `mws mail send`), Files.ReadWrite
+    /// (for `mws drive cp`), Calendars.ReadWrite, etc.
+    #[arg(long = "scope")]
+    pub scopes: Vec<String>,
     /// Override the OAuth token endpoint (hidden; for tests).
     #[arg(long, hide = true)]
     pub token_endpoint: Option<String>,
