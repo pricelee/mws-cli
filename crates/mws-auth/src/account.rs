@@ -6,27 +6,52 @@ use crate::token::RedactedString;
 pub const DEFAULT_CLIENT_ID: &str = "14d82eec-204b-4c2f-b7e8-296a70dab67e";
 pub const DEFAULT_TENANT: &str = "common";
 
-/// Scopes requested by `mws auth login` by default — the union of scopes
-/// every shipped sugar command needs, so users don't have to think about
-/// per-command consent.
+/// Scopes requested by `mws auth login` by default. Covers the personal-
+/// productivity surface of Microsoft Graph that a user owns themselves:
+/// mail, calendar, contacts, OneDrive, OneNote, To Do, Teams chat/presence.
 ///
-/// When a new sugar command ships, add its required scopes here. Power users
-/// who want to widen further (e.g. `Mail.Read` for ad-hoc `mws raw` use)
-/// supply `--scope` on the command line and the values are merged with these.
+/// **No `*.All` admin-consent scopes here.** Including admin-only scopes
+/// would either silently fail or block all non-admin users at sign-in
+/// ("needs admin approval"). Power users / admins who need them widen with
+/// `mws auth login --scope Sites.Read.All --scope Directory.Read.All ...`.
 ///
-/// Per scope:
-/// - `User.Read` — `mws whoami`
-/// - `Mail.Send` — `mws mail send`
-/// - `Files.ReadWrite` — `mws drive cp` (user's drive, any folder)
-/// - `offline_access` — refresh tokens (so sessions persist past 1h)
-/// - `openid` / `profile` — id_token + basic profile claims
+/// Adding new sugar commands? Add their delegated user-data scopes here so
+/// the typical user gets a single consent prompt instead of per-command
+/// re-auth.
 pub const DEFAULT_SCOPES: &[&str] = &[
-    "User.Read",
-    "Mail.Send",
-    "Files.ReadWrite",
-    "offline_access",
+    // --- OIDC / identity ---
     "openid",
     "profile",
+    "email",
+    "offline_access",
+    "User.Read",
+
+    // --- Mail (Outlook) ---
+    "Mail.ReadWrite",
+    "Mail.Send",
+    "MailboxSettings.ReadWrite",
+
+    // --- Calendar ---
+    "Calendars.ReadWrite",
+
+    // --- Contacts ---
+    "Contacts.ReadWrite",
+
+    // --- Files (OneDrive personal) ---
+    "Files.ReadWrite",
+
+    // --- OneNote ---
+    "Notes.ReadWrite",
+
+    // --- Tasks (To Do) ---
+    "Tasks.ReadWrite",
+
+    // --- People ---
+    "People.Read",
+
+    // --- Teams (user-level only) ---
+    "Presence.Read",
+    "Chat.ReadWrite",
 ];
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

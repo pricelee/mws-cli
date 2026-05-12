@@ -26,20 +26,25 @@ mws --output json whoami | jq .userPrincipalName
 
 ## Scopes
 
-`mws auth login` requests the union of scopes needed by every shipped sugar command, so the typical case just works without thinking about consent:
+`mws auth login` requests a broad set of **delegated user-data** scopes — everything needed to act on the signed-in user's own mail, calendar, contacts, OneDrive, OneNote, tasks, and Teams chat in one consent screen:
 
-- `User.Read` — `mws whoami`
-- `Mail.Send` — `mws mail send`
-- `Files.ReadWrite` — `mws drive cp`
-- `offline_access`, `openid`, `profile` — OIDC baseline
+- OIDC: `openid`, `profile`, `email`, `offline_access`, `User.Read`
+- Mail: `Mail.ReadWrite`, `Mail.Send`, `MailboxSettings.ReadWrite`
+- Calendar: `Calendars.ReadWrite`
+- Contacts: `Contacts.ReadWrite`
+- Files: `Files.ReadWrite`
+- OneNote: `Notes.ReadWrite`
+- Tasks (To Do): `Tasks.ReadWrite`
+- People: `People.Read`
+- Teams: `Presence.Read`, `Chat.ReadWrite`
 
-For ad-hoc Graph reads via `mws raw` you may need extra scopes (e.g. `Mail.Read` for `/me/messages`, `Calendars.Read` for `/me/events`). Add them with `--scope`:
+**Not** included by default: admin-consent (`.All`) scopes like `Sites.Read.All`, `Directory.Read.All`, `User.Read.All`, etc. — including those upfront would block non-admin sign-in. Admins / power users opt in with `--scope`:
 
 ```sh
-mws auth login --scope Mail.Read --scope Calendars.Read
+mws auth login --scope Sites.Read.All --scope Directory.Read.All
 ```
 
-Re-running `mws auth login` with additional scopes triggers Microsoft's incremental-consent flow.
+Re-running `mws auth login` with new scopes triggers Microsoft's incremental-consent flow (already-granted scopes aren't re-prompted).
 
 ## Manual smoke test (real tenant)
 
