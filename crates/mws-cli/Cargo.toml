@@ -57,3 +57,7 @@ required-features = ["test-helpers"]
 [[test]]
 name = "mail_send"
 required-features = ["test-helpers"]
+
+[[test]]
+name = "drive_cp"
+required-features = ["test-helpers"]

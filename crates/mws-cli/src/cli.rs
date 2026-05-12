@@ -37,12 +37,34 @@ pub struct Cli {
 pub enum Command {
     /// Authentication.
     Auth(AuthArgs),
+    /// OneDrive / SharePoint operations.
+    Drive(DriveArgs),
     /// Mail operations.
     Mail(MailArgs),
     /// Make a raw HTTP request to Microsoft Graph.
     Raw(RawArgs),
     /// Show the signed-in user.
     Whoami,
+}
+
+#[derive(Debug, clap::Args)]
+pub struct DriveArgs {
+    #[command(subcommand)]
+    pub action: DriveAction,
+}
+
+#[derive(Debug, clap::Subcommand)]
+pub enum DriveAction {
+    /// Copy a file to or from OneDrive.
+    Cp(CpArgs),
+}
+
+#[derive(Debug, clap::Args)]
+pub struct CpArgs {
+    /// Source path. Use `mws:/path` for remote, otherwise local. (M1: local→remote only.)
+    pub src: String,
+    /// Destination path. Use `mws:/path` for remote, otherwise local. (M1: local→remote only.)
+    pub dst: String,
 }
 
 #[derive(Debug, clap::Args)]
