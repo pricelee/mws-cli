@@ -161,13 +161,13 @@ pub fn await_callback(server: tiny_http::Server, timeout: Duration) -> Result<(S
 }
 
 pub fn apply_grant(account: &mut crate::account::Account, grant: TokenGrant) {
-    account.access_token = Some(grant.access_token);
+    account.access_token = Some(grant.access_token.into());
     account.access_token_expires_at = Some(now_secs() + grant.expires_in);
-    if grant.refresh_token.is_some() {
-        account.refresh_token = grant.refresh_token;
+    if let Some(rt) = grant.refresh_token {
+        account.refresh_token = Some(rt.into());
     }
-    if grant.id_token.is_some() {
-        account.id_token = grant.id_token;
+    if let Some(it) = grant.id_token {
+        account.id_token = Some(it.into());
     }
 }
 
