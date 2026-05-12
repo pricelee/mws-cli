@@ -1,4 +1,4 @@
-use mws_auth::device_code::Endpoints;
+use mws_auth::Endpoints;
 use mws_graph::GraphClient;
 use mws_output::write;
 

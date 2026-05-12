@@ -1,7 +1,7 @@
 use serde::Deserialize;
 
 use crate::account::{now_secs, Account};
-use crate::device_code::{Endpoints, TokenGrant};
+use crate::token::{Endpoints, TokenGrant};
 use crate::error::AuthError;
 
 #[derive(Debug, Deserialize)]
@@ -36,13 +36,13 @@ pub async fn refresh(http: &reqwest::Client, endpoints: &Endpoints, account: &mu
         id_token: body.id_token,
         expires_in: body.expires_in.unwrap_or(0),
     };
-    account.access_token = Some(grant.access_token);
+    account.access_token = Some(grant.access_token.into());
     account.access_token_expires_at = Some(now_secs() + grant.expires_in);
-    if grant.refresh_token.is_some() {
-        account.refresh_token = grant.refresh_token;
+    if let Some(rt) = grant.refresh_token {
+        account.refresh_token = Some(rt.into());
     }
-    if grant.id_token.is_some() {
-        account.id_token = grant.id_token;
+    if let Some(it) = grant.id_token {
+        account.id_token = Some(it.into());
     }
     Ok(())
 }

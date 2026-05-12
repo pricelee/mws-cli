@@ -15,6 +15,10 @@ pub struct Cli {
     /// Output format: json|table|yaml|tsv.
     #[arg(long, short = 'o', global = true, env = "MWS_OUTPUT")]
     pub output: Option<String>,
+    /// Follow @odata.nextLink and return the full collection. Only meaningful for GET requests
+    /// against collection endpoints.
+    #[arg(long, global = true)]
+    pub all: bool,
     /// Use Microsoft Graph beta endpoints.
     #[arg(long, global = true)]
     pub beta: bool,
@@ -24,7 +28,8 @@ pub struct Cli {
     /// Override the Graph base URL (hidden; for tests).
     #[arg(long, global = true, hide = true)]
     pub graph_base: Option<String>,
-    /// Override the config directory (hidden; for tests).
+    /// Override the config directory (test helper; only compiled with --features test-helpers).
+    #[cfg(feature = "test-helpers")]
     #[arg(long, global = true, hide = true)]
     pub config_dir: Option<std::path::PathBuf>,
 
@@ -36,8 +41,86 @@ pub struct Cli {
 pub enum Command {
     /// Authentication.
     Auth(AuthArgs),
+    /// OneDrive / SharePoint operations.
+    Drive(DriveArgs),
+    /// Mail operations.
+    Mail(MailArgs),
+    /// Make a raw HTTP request to Microsoft Graph.
+    Raw(RawArgs),
     /// Show the signed-in user.
     Whoami,
+}
+
+#[derive(Debug, clap::Args)]
+pub struct DriveArgs {
+    #[command(subcommand)]
+    pub action: DriveAction,
+}
+
+#[derive(Debug, clap::Subcommand)]
+pub enum DriveAction {
+    /// Copy a file to or from OneDrive.
+    Cp(CpArgs),
+}
+
+#[derive(Debug, clap::Args)]
+pub struct CpArgs {
+    /// Source path. Use `mws:/path` for remote, otherwise local. (M1: local→remote only.)
+    pub src: String,
+    /// Destination path. Use `mws:/path` for remote, otherwise local. (M1: local→remote only.)
+    pub dst: String,
+}
+
+#[derive(Debug, clap::Args)]
+pub struct MailArgs {
+    #[command(subcommand)]
+    pub action: MailAction,
+}
+
+#[derive(Debug, clap::Subcommand)]
+pub enum MailAction {
+    /// Send an email.
+    Send(SendArgs),
+}
+
+#[derive(Debug, clap::Args)]
+pub struct SendArgs {
+    /// Recipient (repeatable). At least one required.
+    #[arg(long, required = true)]
+    pub to: Vec<String>,
+    /// CC recipient (repeatable).
+    #[arg(long)]
+    pub cc: Vec<String>,
+    /// BCC recipient (repeatable).
+    #[arg(long)]
+    pub bcc: Vec<String>,
+    /// Subject line.
+    #[arg(long)]
+    pub subject: String,
+    /// Body. Literal text, or `@file` to read from a file, or `-` for stdin.
+    #[arg(long)]
+    pub body: String,
+    /// Treat body as HTML (default: detect or plain text).
+    #[arg(long)]
+    pub html: bool,
+    /// Attachment path (repeatable).
+    #[arg(long = "attachment")]
+    pub attachments: Vec<std::path::PathBuf>,
+}
+
+#[derive(Debug, clap::Args)]
+pub struct RawArgs {
+    /// HTTP method.
+    #[arg(value_parser = ["GET", "POST", "PATCH", "PUT", "DELETE"])]
+    pub method: String,
+    /// Path appended to the Graph base URL (e.g., `/me/messages`).
+    pub path: String,
+    /// Request body. Use `@file` to read from a file, `-` for stdin, or pass literal JSON.
+    #[arg(long)]
+    pub body: Option<String>,
+    /// Custom header in `key:value` form. Repeatable.
+    #[arg(long = "header", short = 'H')]
+    pub headers: Vec<String>,
 }
 
 #[derive(Debug, clap::Args)]
@@ -50,6 +133,17 @@ pub struct AuthArgs {
 pub enum AuthAction {
     /// Sign in.
     Login(LoginArgs),
+    /// Sign out (remove cached credentials).
+    Logout(LogoutArgs),
+    /// List cached accounts.
+    List,
+}
+
+#[derive(Debug, clap::Args)]
+pub struct LogoutArgs {
+    /// Remove every cached account in the config dir.
+    #[arg(long)]
+    pub all: bool,
 }
 
 #[derive(Debug, clap::Args)]

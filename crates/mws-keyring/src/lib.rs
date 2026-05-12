@@ -83,6 +83,18 @@ impl DiskVault {
         }
     }
 
+    /// Return true if `name` is safe for use as a vault entry file name.
+    /// Rejects: empty string, "." / "..", any name containing a path separator,
+    /// any control character (including NUL and newline).
+    pub fn is_valid_name(name: &str) -> bool {
+        if name.is_empty() || name == "." || name == ".." {
+            return false;
+        }
+        !name.chars().any(|c| {
+            c == '/' || c == '\\' || c.is_control()
+        })
+    }
+
     fn path_for(&self, name: &str) -> std::path::PathBuf {
         self.dir.join(format!("{name}.bin"))
     }
@@ -90,6 +102,9 @@ impl DiskVault {
 
 impl Vault for DiskVault {
     fn put(&self, name: &str, plaintext: &[u8]) -> Result<(), VaultError> {
+        if !Self::is_valid_name(name) {
+            return Err(VaultError::Keyring(format!("invalid account name: {name:?}")));
+        }
         std::fs::create_dir_all(&self.dir).map_err(|e| VaultError::Keyring(e.to_string()))?;
         let pw = self.password()?;
         let env = crypto::encrypt(&pw, plaintext)?;
@@ -98,12 +113,18 @@ impl Vault for DiskVault {
         Ok(())
     }
     fn get(&self, name: &str) -> Result<Vec<u8>, VaultError> {
+        if !Self::is_valid_name(name) {
+            return Err(VaultError::Keyring(format!("invalid account name: {name:?}")));
+        }
         let bytes = std::fs::read(self.path_for(name)).map_err(|_| VaultError::NotFound(name.to_string()))?;
         let env: Envelope = serde_json::from_slice(&bytes)?;
         let pw = self.password()?;
         Ok(crypto::decrypt(&pw, &env)?)
     }
     fn delete(&self, name: &str) -> Result<(), VaultError> {
+        if !Self::is_valid_name(name) {
+            return Err(VaultError::Keyring(format!("invalid account name: {name:?}")));
+        }
         let p = self.path_for(name);
         if p.exists() {
             std::fs::remove_file(p).map_err(|e| VaultError::Keyring(e.to_string()))?;
@@ -123,5 +144,31 @@ mod tests {
         assert_eq!(v.get("alice").unwrap(), b"hello");
         v.delete("alice").unwrap();
         assert!(matches!(v.get("alice"), Err(VaultError::NotFound(_))));
+    }
+
+    #[test]
+    fn disk_vault_rejects_path_traversal() {
+        let dir = tempfile::tempdir().unwrap();
+        let v = DiskVault::new(dir.path(), "mws-test-sanitize");
+        assert!(matches!(v.put("..", b"x"), Err(VaultError::Keyring(_))));
+        assert!(matches!(v.put("../escape", b"x"), Err(VaultError::Keyring(_))));
+        assert!(matches!(v.put("a/b", b"x"), Err(VaultError::Keyring(_))));
+        assert!(matches!(v.put("a\\b", b"x"), Err(VaultError::Keyring(_))));
+        assert!(matches!(v.put("a\0b", b"x"), Err(VaultError::Keyring(_))));
+    }
+
+    #[test]
+    fn disk_vault_accepts_safe_names() {
+        let dir = tempfile::tempdir().unwrap();
+        let _v = DiskVault::new(dir.path(), "mws-test-safe");
+        // These should NOT error on the validation; they'll proceed to the keyring,
+        // which on test machines might be the real WCM. We only care that the validation
+        // doesn't reject them — so we test path_for directly via a helper.
+        for name in &["default", "work", "alice-2025", "user.contoso.com"] {
+            assert!(DiskVault::is_valid_name(name), "should accept {name:?}");
+        }
+        for bad in &["..", ".", "", "a/b", "a\\b", "a\0b", "a\nb"] {
+            assert!(!DiskVault::is_valid_name(bad), "should reject {bad:?}");
+        }
     }
 }

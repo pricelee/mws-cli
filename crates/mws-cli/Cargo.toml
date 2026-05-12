@@ -17,15 +17,51 @@ mws-keyring = { path = "../mws-keyring" }
 clap.workspace = true
 tokio.workspace = true
 serde_json.workspace = true
-thiserror.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 directories.workspace = true
 reqwest = { workspace = true }
 anyhow = "1"
+base64.workspace = true
 
 [dev-dependencies]
 assert_cmd.workspace = true
 predicates.workspace = true
 tempfile.workspace = true
 wiremock.workspace = true
+
+[features]
+default = []
+test-helpers = []
+
+[[test]]
+name = "auth_login"
+required-features = ["test-helpers"]
+
+[[test]]
+name = "whoami"
+required-features = ["test-helpers"]
+
+[[test]]
+name = "auth_logout"
+required-features = ["test-helpers"]
+
+[[test]]
+name = "auth_list"
+required-features = ["test-helpers"]
+
+[[test]]
+name = "raw"
+required-features = ["test-helpers"]
+
+[[test]]
+name = "mail_send"
+required-features = ["test-helpers"]
+
+[[test]]
+name = "drive_cp"
+required-features = ["test-helpers"]
+
+[[test]]
+name = "raw_all"
+required-features = ["test-helpers"]

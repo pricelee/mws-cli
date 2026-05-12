@@ -1,7 +1,8 @@
 use std::time::Duration;
 
 use mws_auth::auth_code;
-use mws_auth::device_code::{self, Endpoints};
+use mws_auth::device_code;
+use mws_auth::Endpoints;
 use mws_auth::{Account, DEFAULT_SCOPES};
 
 use crate::cli::{AuthAction, AuthArgs, LoginArgs};
@@ -10,6 +11,8 @@ use crate::context::CliContext;
 pub async fn run(ctx: &CliContext, args: AuthArgs) -> anyhow::Result<()> {
     match args.action {
         AuthAction::Login(a) => login(ctx, a).await,
+        AuthAction::Logout(a) => logout(ctx, a).await,
+        AuthAction::List => list(ctx).await,
     }
 }
 
@@ -63,6 +66,29 @@ async fn login(ctx: &CliContext, args: LoginArgs) -> anyhow::Result<()> {
     Ok(())
 }
 
+async fn logout(ctx: &CliContext, args: crate::cli::LogoutArgs) -> anyhow::Result<()> {
+    if args.all {
+        let accounts_dir = ctx.config_dir.join("accounts");
+        if accounts_dir.exists() {
+            for entry in std::fs::read_dir(&accounts_dir)? {
+                let entry = entry?;
+                if entry.path().extension().and_then(|s| s.to_str()) == Some("bin") {
+                    if let Some(stem) = entry.path().file_stem().and_then(|s| s.to_str()) {
+                        let _ = ctx.store.delete(stem); // best-effort; ignore not-found
+                        println!("Removed account '{stem}'.");
+                    }
+                }
+            }
+        } else {
+            println!("No accounts to remove.");
+        }
+    } else {
+        ctx.store.delete(&ctx.account_name)?;
+        println!("Removed account '{}'.", ctx.account_name);
+    }
+    Ok(())
+}
+
 #[cfg(not(test))]
 fn is_graphical_desktop() -> bool {
     // crude heuristic — present on win/mac; on linux check DISPLAY/WAYLAND_DISPLAY
@@ -75,6 +101,56 @@ fn is_graphical_desktop() -> bool {
 #[cfg(test)]
 fn is_graphical_desktop() -> bool {
     false
+}
+
+async fn list(ctx: &CliContext) -> anyhow::Result<()> {
+    let accounts_dir = ctx.config_dir.join("accounts");
+    if !accounts_dir.exists() {
+        println!("No accounts cached.");
+        return Ok(());
+    }
+    let mut rows: Vec<serde_json::Value> = Vec::new();
+    for entry in std::fs::read_dir(&accounts_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.extension().and_then(|s| s.to_str()) != Some("bin") {
+            continue;
+        }
+        let Some(name) = path.file_stem().and_then(|s| s.to_str()) else { continue };
+        match ctx.store.load(name) {
+            Ok(account) => {
+                let expires_in = account
+                    .access_token_expires_at
+                    .map(|exp| {
+                        let now = mws_auth::account::now_secs() as i64;
+                        let delta = exp as i64 - now;
+                        if delta < 0 { format!("expired {}s ago", -delta) } else { format!("valid {delta}s") }
+                    })
+                    .unwrap_or_else(|| "no token".to_string());
+                rows.push(serde_json::json!({
+                    "name": account.name,
+                    "tenant": account.tenant,
+                    "username": account.username.clone().unwrap_or_default(),
+                    "expires": expires_in,
+                }));
+            }
+            Err(e) => {
+                rows.push(serde_json::json!({
+                    "name": name,
+                    "tenant": "",
+                    "username": "",
+                    "expires": format!("error: {e}"),
+                }));
+            }
+        }
+    }
+    if rows.is_empty() {
+        println!("No accounts cached.");
+        return Ok(());
+    }
+    let mut stdout = std::io::stdout().lock();
+    mws_output::write(ctx.format, &rows, &mut stdout)?;
+    Ok(())
 }
 
 fn open_browser(url: &str) -> std::io::Result<()> {
