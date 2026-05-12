@@ -109,11 +109,12 @@ pub async fn exchange_code(
 
 /// Bind a loopback listener on 127.0.0.1:0; returns (server, redirect_uri).
 ///
-/// The redirect URI uses the hostname `localhost` (not `127.0.0.1`) because
-/// Microsoft's first-party "Microsoft Graph Command Line Tools" app
-/// (14d82eec-204b-4c2f-b7e8-296a70dab67e) registers `http://localhost` and
-/// validates the redirect URI by string match on the host. The OS resolves
-/// `localhost` to 127.0.0.1 in the browser, which then reaches our listener.
+/// The redirect URI uses the hostname `localhost` (not `127.0.0.1`) and the
+/// root path (not `/callback`) because Microsoft's first-party
+/// "Microsoft Graph Command Line Tools" app (14d82eec-...) registers
+/// `http://localhost` exactly. Microsoft's loopback rule wildcards the port
+/// but the host and path must match the registered URI string. The browser's
+/// OS resolver maps `localhost` to 127.0.0.1, so our IPv4 listener catches it.
 pub fn loopback() -> Result<(tiny_http::Server, String), AuthError> {
     let server = tiny_http::Server::http("127.0.0.1:0")
         .map_err(|e| AuthError::State(format!("bind loopback: {e}")))?;
@@ -124,7 +125,7 @@ pub fn loopback() -> Result<(tiny_http::Server, String), AuthError> {
     } else {
         return Err(AuthError::State("expected IP listen addr".into()));
     };
-    let redirect = format!("http://localhost:{port}/callback");
+    let redirect = format!("http://localhost:{port}/");
     Ok((server, redirect))
 }
 
