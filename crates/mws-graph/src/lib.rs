@@ -92,6 +92,61 @@ impl GraphClient {
             return Ok(resp.json().await?);
         }
     }
+
+    /// Send a request with arbitrary method, body, and extra headers.
+    /// Returns (status, response_body_bytes, content_type). 401-refresh and 429-retry are honored.
+    pub async fn send_request(
+        &self,
+        account: &mut Account,
+        method: reqwest::Method,
+        path: &str,
+        body: Option<Vec<u8>>,
+        headers: &[(String, String)],
+    ) -> Result<(reqwest::StatusCode, bytes::Bytes, Option<String>), GraphError> {
+        let url = format!("{}{}", self.base, path);
+        let mut refreshed = false;
+        let mut throttle_attempts = 0u32;
+        loop {
+            let token = account
+                .access_token
+                .as_deref()
+                .ok_or_else(|| GraphError::Api {
+                    status: 401,
+                    code: "no_token".into(),
+                    message: "no access token cached".into(),
+                })?;
+            let mut req = self.http.request(method.clone(), &url).bearer_auth(token);
+            for (k, v) in headers {
+                req = req.header(k, v);
+            }
+            if let Some(b) = body.clone() {
+                req = req.body(b);
+            }
+            let resp = req.send().await?;
+            let status = resp.status();
+            if status == reqwest::StatusCode::UNAUTHORIZED && !refreshed {
+                refresh::refresh(&self.http, &self.token_endpoints, account).await?;
+                refreshed = true;
+                continue;
+            }
+            if (status == reqwest::StatusCode::TOO_MANY_REQUESTS
+                || status == reqwest::StatusCode::SERVICE_UNAVAILABLE)
+                && throttle_attempts < self.max_retries
+            {
+                let wait = parse_retry_after(&resp).unwrap_or_else(|| backoff_delay(throttle_attempts));
+                tokio::time::sleep(wait).await;
+                throttle_attempts += 1;
+                continue;
+            }
+            let content_type = resp
+                .headers()
+                .get(reqwest::header::CONTENT_TYPE)
+                .and_then(|v| v.to_str().ok())
+                .map(str::to_string);
+            let body = resp.bytes().await?;
+            return Ok((status, body, content_type));
+        }
+    }
 }
 
 fn parse_retry_after(resp: &reqwest::Response) -> Option<std::time::Duration> {

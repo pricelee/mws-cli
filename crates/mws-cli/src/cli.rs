@@ -37,8 +37,25 @@ pub struct Cli {
 pub enum Command {
     /// Authentication.
     Auth(AuthArgs),
+    /// Make a raw HTTP request to Microsoft Graph.
+    Raw(RawArgs),
     /// Show the signed-in user.
     Whoami,
+}
+
+#[derive(Debug, clap::Args)]
+pub struct RawArgs {
+    /// HTTP method.
+    #[arg(value_parser = ["GET", "POST", "PATCH", "PUT", "DELETE"])]
+    pub method: String,
+    /// Path appended to the Graph base URL (e.g., `/me/messages`).
+    pub path: String,
+    /// Request body. Use `@file` to read from a file, `-` for stdin, or pass literal JSON.
+    #[arg(long)]
+    pub body: Option<String>,
+    /// Custom header in `key:value` form. Repeatable.
+    #[arg(long = "header", short = 'H')]
+    pub headers: Vec<String>,
 }
 
 #[derive(Debug, clap::Args)]

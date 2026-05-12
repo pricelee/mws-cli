@@ -16,6 +16,7 @@ async fn main() -> anyhow::Result<()> {
         .init();
     match args.command {
         cli::Command::Auth(a) => commands::auth::run(&ctx, a).await?,
+        cli::Command::Raw(a) => commands::raw::run(&ctx, a).await?,
         cli::Command::Whoami => commands::whoami::run(&ctx).await?,
     }
     Ok(())

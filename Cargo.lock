@@ -1356,9 +1356,12 @@ dependencies = [
 name = "mws-graph"
 version = "0.0.1"
 dependencies = [
+ "bytes",
  "mws-auth",
+ "rand 0.8.6",
  "reqwest",
  "serde_json",
+ "tempfile",
  "thiserror 1.0.69",
  "tokio",
  "wiremock",
