@@ -156,7 +156,12 @@ async fn list(ctx: &CliContext) -> anyhow::Result<()> {
 fn open_browser(url: &str) -> std::io::Result<()> {
     #[cfg(windows)]
     {
-        std::process::Command::new("cmd").args(["/C", "start", "", url]).spawn().map(|_| ())
+        use std::os::windows::process::CommandExt;
+        // cmd treats `&` as a command separator, which would truncate the URL at the
+        // first query-param boundary. raw_arg with the URL explicitly quoted prevents
+        // that. Embedded double-quotes are doubled (cmd's escape).
+        let arg = build_windows_cmd_arg(url);
+        std::process::Command::new("cmd").raw_arg(&arg).spawn().map(|_| ())
     }
     #[cfg(target_os = "macos")]
     {
@@ -165,5 +170,44 @@ fn open_browser(url: &str) -> std::io::Result<()> {
     #[cfg(all(unix, not(target_os = "macos")))]
     {
         std::process::Command::new("xdg-open").arg(url).spawn().map(|_| ())
+    }
+}
+
+/// Build the raw argument string passed to `cmd /C` to open `url` in the default browser
+/// without letting cmd's `&` command-separator parse the URL's query string.
+/// Format: `/C start "" "URL"` with any embedded `"` doubled.
+#[cfg(windows)]
+fn build_windows_cmd_arg(url: &str) -> String {
+    let escaped = url.replace('"', "\"\"");
+    format!(r#"/C start "" "{escaped}""#)
+}
+
+#[cfg(test)]
+#[cfg(windows)]
+mod browser_tests {
+    use super::build_windows_cmd_arg;
+
+    #[test]
+    fn quotes_url_so_ampersand_is_preserved() {
+        let url = "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=X&response_type=code&scope=User.Read";
+        let arg = build_windows_cmd_arg(url);
+        assert_eq!(
+            arg,
+            r#"/C start "" "https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=X&response_type=code&scope=User.Read""#
+        );
+        // The whole URL — every query pair — must sit inside the outer quoted region
+        // so cmd does NOT interpret the `&` characters as command separators.
+        let inner = &arg["/C start \"\" \"".len()..arg.len() - 1];
+        assert_eq!(inner, url);
+    }
+
+    #[test]
+    fn doubles_embedded_double_quotes() {
+        let url = r#"https://example.com/?q="hi""#;
+        let arg = build_windows_cmd_arg(url);
+        assert_eq!(
+            arg,
+            r#"/C start "" "https://example.com/?q=""hi""""#
+        );
     }
 }
