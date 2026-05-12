@@ -52,6 +52,10 @@ pub const DEFAULT_SCOPES: &[&str] = &[
     // --- Teams (user-level only) ---
     "Presence.Read",
     "Chat.ReadWrite",
+    "Chat.Create",
+    "Team.ReadBasic.All",
+    "Channel.ReadBasic.All",
+    "ChannelMessage.Send",
 ];
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

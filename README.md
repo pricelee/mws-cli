@@ -36,7 +36,7 @@ mws --output json whoami | jq .userPrincipalName
 - OneNote: `Notes.ReadWrite`
 - Tasks (To Do): `Tasks.ReadWrite`
 - People: `People.Read`
-- Teams: `Presence.Read`, `Chat.ReadWrite`
+- Teams: `Presence.Read`, `Chat.ReadWrite`, `Chat.Create`, `Team.ReadBasic.All`, `Channel.ReadBasic.All`, `ChannelMessage.Send`
 
 **Not** included by default: admin-consent (`.All`) scopes like `Sites.Read.All`, `Directory.Read.All`, `User.Read.All`, etc. — including those upfront would block non-admin sign-in. Admins / power users opt in with `--scope`:
 
