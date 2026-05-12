@@ -19,7 +19,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 clap = { version = "4.5", features = ["derive", "env"] }
 comfy-table = "7"
 oauth2 = { version = "4.4", default-features = false, features = ["reqwest", "rustls-tls"] }
-keyring = { version = "3.6", features = ["windows-native"] }
+# keyring moved to mws-keyring per-target (platform-conditional features)
 aes-gcm = "0.10"
 argon2 = "0.5"
 rand = "0.8"
