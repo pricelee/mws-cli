@@ -22,6 +22,7 @@ tracing-subscriber.workspace = true
 directories.workspace = true
 reqwest = { workspace = true }
 anyhow = "1"
+base64.workspace = true
 
 [dev-dependencies]
 assert_cmd.workspace = true
@@ -51,4 +52,8 @@ required-features = ["test-helpers"]
 
 [[test]]
 name = "raw"
+required-features = ["test-helpers"]
+
+[[test]]
+name = "mail_send"
 required-features = ["test-helpers"]

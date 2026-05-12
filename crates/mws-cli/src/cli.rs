@@ -37,10 +37,49 @@ pub struct Cli {
 pub enum Command {
     /// Authentication.
     Auth(AuthArgs),
+    /// Mail operations.
+    Mail(MailArgs),
     /// Make a raw HTTP request to Microsoft Graph.
     Raw(RawArgs),
     /// Show the signed-in user.
     Whoami,
+}
+
+#[derive(Debug, clap::Args)]
+pub struct MailArgs {
+    #[command(subcommand)]
+    pub action: MailAction,
+}
+
+#[derive(Debug, clap::Subcommand)]
+pub enum MailAction {
+    /// Send an email.
+    Send(SendArgs),
+}
+
+#[derive(Debug, clap::Args)]
+pub struct SendArgs {
+    /// Recipient (repeatable). At least one required.
+    #[arg(long, required = true)]
+    pub to: Vec<String>,
+    /// CC recipient (repeatable).
+    #[arg(long)]
+    pub cc: Vec<String>,
+    /// BCC recipient (repeatable).
+    #[arg(long)]
+    pub bcc: Vec<String>,
+    /// Subject line.
+    #[arg(long)]
+    pub subject: String,
+    /// Body. Literal text, or `@file` to read from a file, or `-` for stdin.
+    #[arg(long)]
+    pub body: String,
+    /// Treat body as HTML (default: detect or plain text).
+    #[arg(long)]
+    pub html: bool,
+    /// Attachment path (repeatable).
+    #[arg(long = "attachment")]
+    pub attachments: Vec<std::path::PathBuf>,
 }
 
 #[derive(Debug, clap::Args)]
