@@ -1,6 +1,7 @@
 //! OAuth flows and account storage for mws.
 
 pub mod account;
+pub mod device_code;
 pub mod error;
 pub mod store;
 
