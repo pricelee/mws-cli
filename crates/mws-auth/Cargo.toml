@@ -26,4 +26,4 @@ base64 = "0.22"
 wiremock.workspace = true
 tempfile.workspace = true
 tokio = { workspace = true, features = ["test-util", "macros"] }
-reqwest = { version = "0.12", features = ["blocking", "rustls-tls"] }
+reqwest = { workspace = true, features = ["blocking"] }
