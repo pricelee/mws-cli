@@ -11,4 +11,4 @@ pub mod token;
 pub use account::{Account, DEFAULT_CLIENT_ID, DEFAULT_SCOPES, DEFAULT_TENANT};
 pub use error::AuthError;
 pub use store::AccountStore;
-pub use token::RedactedString;
+pub use token::{Endpoints, RedactedString, TokenGrant};

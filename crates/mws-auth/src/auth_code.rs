@@ -6,7 +6,7 @@ use sha2::{Digest, Sha256};
 use url::Url;
 
 use crate::account::now_secs;
-use crate::device_code::{Endpoints, TokenGrant};
+use crate::token::{Endpoints, TokenGrant};
 use crate::error::AuthError;
 
 /// PKCE pair (verifier + challenge).

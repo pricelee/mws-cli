@@ -1,7 +1,7 @@
 use serde::Deserialize;
 
 use crate::account::{now_secs, Account};
-use crate::device_code::{Endpoints, TokenGrant};
+use crate::token::{Endpoints, TokenGrant};
 use crate::error::AuthError;
 
 #[derive(Debug, Deserialize)]

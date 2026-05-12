@@ -1,7 +1,8 @@
 use std::time::Duration;
 
 use mws_auth::auth_code;
-use mws_auth::device_code::{self, Endpoints};
+use mws_auth::device_code;
+use mws_auth::Endpoints;
 use mws_auth::{Account, DEFAULT_SCOPES};
 
 use crate::cli::{AuthAction, AuthArgs, LoginArgs};

@@ -2,27 +2,10 @@ use std::time::Duration;
 
 use serde::Deserialize;
 use tokio::time::sleep;
-use url::Url;
 
 use crate::account::{now_secs, Account};
 use crate::error::AuthError;
-
-/// Endpoints the device-code flow talks to. Public so tests can stub them.
-#[derive(Debug, Clone)]
-pub struct Endpoints {
-    pub device_authorization: Url,
-    pub token: Url,
-}
-
-impl Endpoints {
-    pub fn for_tenant(tenant: &str) -> Self {
-        let base = format!("https://login.microsoftonline.com/{tenant}/oauth2/v2.0");
-        Self {
-            device_authorization: format!("{base}/devicecode").parse().expect("valid url"),
-            token: format!("{base}/token").parse().expect("valid url"),
-        }
-    }
-}
+use crate::token::{Endpoints, TokenGrant};
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct DeviceAuthorization {
@@ -114,14 +97,6 @@ pub async fn poll(
             expires_in: body.expires_in.unwrap_or(0),
         });
     }
-}
-
-#[derive(Debug)]
-pub struct TokenGrant {
-    pub access_token: String,
-    pub refresh_token: Option<String>,
-    pub id_token: Option<String>,
-    pub expires_in: u64,
 }
 
 pub fn apply_grant(account: &mut Account, grant: TokenGrant) {

@@ -3,7 +3,7 @@
 pub mod error;
 
 use mws_auth::account::Account;
-use mws_auth::device_code::Endpoints as TokenEndpoints;
+use mws_auth::Endpoints as TokenEndpoints;
 use mws_auth::refresh;
 
 pub use error::GraphError;
@@ -79,7 +79,7 @@ mod tests {
             .mount(&graph)
             .await;
         let token = MockServer::start().await;
-        let endpoints = mws_auth::device_code::Endpoints {
+        let endpoints = mws_auth::Endpoints {
             device_authorization: format!("{}/devicecode", token.uri()).parse().unwrap(),
             token: format!("{}/token", token.uri()).parse().unwrap(),
         };
@@ -113,7 +113,7 @@ mod tests {
             })))
             .mount(&token)
             .await;
-        let endpoints = mws_auth::device_code::Endpoints {
+        let endpoints = mws_auth::Endpoints {
             device_authorization: format!("{}/devicecode", token.uri()).parse().unwrap(),
             token: format!("{}/token", token.uri()).parse().unwrap(),
         };
@@ -135,7 +135,7 @@ mod tests {
             .mount(&graph)
             .await;
         let token = MockServer::start().await;
-        let endpoints = mws_auth::device_code::Endpoints {
+        let endpoints = mws_auth::Endpoints {
             device_authorization: format!("{}/devicecode", token.uri()).parse().unwrap(),
             token: format!("{}/token", token.uri()).parse().unwrap(),
         };
