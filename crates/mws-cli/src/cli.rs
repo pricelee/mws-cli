@@ -53,6 +53,8 @@ pub enum AuthAction {
     Login(LoginArgs),
     /// Sign out (remove cached credentials).
     Logout(LogoutArgs),
+    /// List cached accounts.
+    List,
 }
 
 #[derive(Debug, clap::Args)]
