@@ -4,6 +4,7 @@ pub mod account;
 pub mod auth_code;
 pub mod device_code;
 pub mod error;
+pub mod refresh;
 pub mod store;
 
 pub use account::{Account, DEFAULT_CLIENT_ID, DEFAULT_SCOPES, DEFAULT_TENANT};
