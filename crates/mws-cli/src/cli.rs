@@ -65,6 +65,15 @@ pub struct Cli {
     /// Verbose logging.
     #[arg(long, short = 'v', global = true)]
     pub verbose: bool,
+    /// Print the prepared HTTP request as JSON instead of sending it.
+    /// Useful for inspecting what `mws raw` (or future commands) would do.
+    #[arg(long, global = true)]
+    pub dry_run: bool,
+    /// Skip the destructive-operation confirmation prompt. Required when
+    /// running non-interactively (no TTY) for any DELETE or other destructive
+    /// Graph call via `mws raw`.
+    #[arg(long, short = 'y', global = true)]
+    pub yes: bool,
     /// Override the Graph base URL (hidden; for tests).
     #[arg(long, global = true, hide = true)]
     pub graph_base: Option<String>,

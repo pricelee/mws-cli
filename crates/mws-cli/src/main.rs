@@ -2,6 +2,7 @@ mod cli;
 mod commands;
 mod context;
 mod errors;
+mod safety;
 
 use clap::Parser;
 use std::process::ExitCode;
@@ -34,7 +35,12 @@ async fn main() -> ExitCode {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
             errors::print(&e);
-            ExitCode::FAILURE
+            if e.downcast_ref::<safety::SafetyRefused>().is_some() {
+                // exit code 4 == "permission/safety refused" per the M0 spec.
+                ExitCode::from(4)
+            } else {
+                ExitCode::FAILURE
+            }
         }
     }
 }

@@ -30,7 +30,15 @@ fn describe_root() -> Value {
             {"name": "all", "type": "bool", "description": "Follow @odata.nextLink for collection GETs"},
             {"name": "beta", "type": "bool", "description": "Use https://graph.microsoft.com/beta"},
             {"name": "verbose", "type": "bool", "description": "Verbose tracing"},
+            {"name": "dry-run", "type": "bool", "description": "Print the prepared HTTP request as JSON instead of sending it"},
+            {"name": "yes", "short": "y", "type": "bool", "description": "Skip the destructive-op confirmation prompt (required for non-TTY/agent use of DELETE etc.)"},
         ],
+        "safety": {
+            "destructive_methods": ["DELETE"],
+            "destructive_post_suffixes": ["/delete", "/permanentDelete", "/revokeGrants", "/archive"],
+            "behavior": "TTY users get a y/N prompt before any destructive operation. Non-TTY callers (agents, scripts) must pass --yes explicitly; otherwise mws exits 4 with a hint.",
+            "exit_code_safety_refused": 4,
+        },
         "commands": [
             {"name": "auth login", "description": "Sign in (device-code or auth-code+PKCE)"},
             {"name": "auth list", "description": "List cached accounts"},
