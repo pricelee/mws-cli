@@ -28,7 +28,7 @@ tiny_http = "0.12"
 url = "2"
 async-trait = "0.1"
 # dev
-wiremock = "0.6"
+wiremock = "0.5"
 assert_cmd = "2"
 predicates = "3"
 tempfile = "3"
