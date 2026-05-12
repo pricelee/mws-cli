@@ -48,10 +48,19 @@ pub enum AuthAction {
 
 #[derive(Debug, clap::Args)]
 pub struct LoginArgs {
-    /// Force device-code flow even on a graphical desktop.
+    /// Force device-code flow.
     #[arg(long)]
     pub device: bool,
-    /// Force browser auth-code+PKCE flow (this is the default on graphical desktops).
+    /// Force browser auth-code+PKCE flow.
     #[arg(long, conflicts_with = "device")]
     pub code: bool,
+    /// Override the OAuth token endpoint (hidden; for tests).
+    #[arg(long, hide = true)]
+    pub token_endpoint: Option<String>,
+    /// Override the OAuth device authorization endpoint (hidden; for tests).
+    #[arg(long, hide = true)]
+    pub device_endpoint: Option<String>,
+    /// Override the authorize URL printed to the user (hidden; for tests).
+    #[arg(long, hide = true)]
+    pub authorize_url: Option<String>,
 }
