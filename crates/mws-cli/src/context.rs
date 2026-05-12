@@ -12,7 +12,6 @@ pub struct CliContext {
     pub format: Format,
     pub verbose: bool,
     pub store: AccountStore,
-    #[allow(dead_code)]
     pub config_dir: PathBuf,
     pub graph_base: String,
 }

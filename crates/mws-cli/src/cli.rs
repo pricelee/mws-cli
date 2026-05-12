@@ -51,6 +51,15 @@ pub struct AuthArgs {
 pub enum AuthAction {
     /// Sign in.
     Login(LoginArgs),
+    /// Sign out (remove cached credentials).
+    Logout(LogoutArgs),
+}
+
+#[derive(Debug, clap::Args)]
+pub struct LogoutArgs {
+    /// Remove every cached account in the config dir.
+    #[arg(long)]
+    pub all: bool,
 }
 
 #[derive(Debug, clap::Args)]

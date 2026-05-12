@@ -40,3 +40,7 @@ required-features = ["test-helpers"]
 [[test]]
 name = "whoami"
 required-features = ["test-helpers"]
+
+[[test]]
+name = "auth_logout"
+required-features = ["test-helpers"]

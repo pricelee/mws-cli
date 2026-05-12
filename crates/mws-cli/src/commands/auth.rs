@@ -11,6 +11,7 @@ use crate::context::CliContext;
 pub async fn run(ctx: &CliContext, args: AuthArgs) -> anyhow::Result<()> {
     match args.action {
         AuthAction::Login(a) => login(ctx, a).await,
+        AuthAction::Logout(a) => logout(ctx, a).await,
     }
 }
 
@@ -61,6 +62,29 @@ async fn login(ctx: &CliContext, args: LoginArgs) -> anyhow::Result<()> {
 
     ctx.store.save(&account)?;
     println!("Saved account '{}' for tenant '{}'.", account.name, account.tenant);
+    Ok(())
+}
+
+async fn logout(ctx: &CliContext, args: crate::cli::LogoutArgs) -> anyhow::Result<()> {
+    if args.all {
+        let accounts_dir = ctx.config_dir.join("accounts");
+        if accounts_dir.exists() {
+            for entry in std::fs::read_dir(&accounts_dir)? {
+                let entry = entry?;
+                if entry.path().extension().and_then(|s| s.to_str()) == Some("bin") {
+                    if let Some(stem) = entry.path().file_stem().and_then(|s| s.to_str()) {
+                        let _ = ctx.store.delete(stem); // best-effort; ignore not-found
+                        println!("Removed account '{stem}'.");
+                    }
+                }
+            }
+        } else {
+            println!("No accounts to remove.");
+        }
+    } else {
+        ctx.store.delete(&ctx.account_name)?;
+        println!("Removed account '{}'.", ctx.account_name);
+    }
     Ok(())
 }
 
