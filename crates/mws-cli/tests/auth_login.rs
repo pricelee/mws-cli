@@ -26,13 +26,15 @@ async fn device_code_login_saves_account() {
         .await;
 
     let tmp = tempfile::tempdir().unwrap();
-    let mut cmd = Command::cargo_bin("mws").unwrap();
-    cmd.env("XDG_CONFIG_HOME", tmp.path())
-        .env("APPDATA", tmp.path())
-        .env("HOME", tmp.path())
-        .args(["auth", "login", "--device",
-            "--device-endpoint", &format!("{}/devicecode", server.uri()),
-            "--token-endpoint", &format!("{}/token", server.uri()),
-        ]);
-    cmd.assert().success().stdout(contains("ABCD-EFGH")).stdout(contains("Saved account"));
+    let cfg = tmp.path().to_str().unwrap();
+    // Use --config-dir so the subprocess writes to the tempdir.
+    // directories::ProjectDirs ignores APPDATA on Windows (uses SHGetKnownFolderPath),
+    // so env var overrides alone do not isolate test state.
+    Command::cargo_bin("mws").unwrap()
+        .args(["--config-dir", cfg,
+               "auth", "login", "--device",
+               "--device-endpoint", &format!("{}/devicecode", server.uri()),
+               "--token-endpoint", &format!("{}/token", server.uri()),
+        ])
+        .assert().success().stdout(contains("ABCD-EFGH")).stdout(contains("Saved account"));
 }

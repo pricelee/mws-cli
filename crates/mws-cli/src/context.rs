@@ -14,14 +14,24 @@ pub struct CliContext {
     pub verbose: bool,
     pub store: AccountStore,
     pub config_dir: PathBuf,
+    pub graph_base: String,
 }
 
 impl CliContext {
     pub fn build(args: &crate::cli::Cli) -> anyhow::Result<Self> {
-        let proj = directories::ProjectDirs::from("com", "mws", "mws").ok_or_else(|| anyhow::anyhow!("no config dir"))?;
-        let config_dir = proj.config_dir().to_path_buf();
+        let (config_dir, vault_service) = if let Some(dir) = args.config_dir.clone() {
+            // Test override: derive a deterministic, unique service name from the
+            // directory path so parallel test runs each get their own Windows
+            // Credential Manager entry and cannot collide.
+            let svc = format!("mws-test-{}", fnv1a_hex(dir.to_string_lossy().as_bytes()));
+            (dir, svc)
+        } else {
+            let proj = directories::ProjectDirs::from("com", "mws", "mws")
+                .ok_or_else(|| anyhow::anyhow!("no config dir"))?;
+            (proj.config_dir().to_path_buf(), "mws".to_string())
+        };
         std::fs::create_dir_all(&config_dir)?;
-        let vault: Arc<dyn Vault> = Arc::new(DiskVault::new(config_dir.join("accounts"), "mws"));
+        let vault: Arc<dyn Vault> = Arc::new(DiskVault::new(config_dir.join("accounts"), &vault_service));
         let store = AccountStore::new(vault);
         let format = match args.output.as_deref() {
             Some(s) => Format::parse(s).map_err(|e| anyhow::anyhow!(e.to_string()))?,
@@ -30,6 +40,13 @@ impl CliContext {
                 Format::auto(std::io::stdout().is_terminal())
             }
         };
+        let graph_base = args.graph_base.clone().unwrap_or_else(|| {
+            if args.beta {
+                "https://graph.microsoft.com/beta".to_string()
+            } else {
+                "https://graph.microsoft.com/v1.0".to_string()
+            }
+        });
         Ok(Self {
             account_name: args.account.clone().unwrap_or_else(|| "default".to_string()),
             tenant: args.tenant.clone().unwrap_or_else(|| mws_auth::DEFAULT_TENANT.to_string()),
@@ -39,6 +56,21 @@ impl CliContext {
             verbose: args.verbose,
             store,
             config_dir,
+            graph_base,
         })
     }
+}
+
+/// FNV-1a 64-bit hash — deterministic across processes and platforms.
+/// Used to derive a unique Windows Credential Manager service name from a
+/// test-supplied config-dir path so parallel test invocations cannot collide.
+fn fnv1a_hex(data: &[u8]) -> String {
+    const FNV_OFFSET: u64 = 14_695_981_039_346_656_037;
+    const FNV_PRIME: u64 = 1_099_511_628_211;
+    let mut hash = FNV_OFFSET;
+    for &byte in data {
+        hash ^= u64::from(byte);
+        hash = hash.wrapping_mul(FNV_PRIME);
+    }
+    format!("{hash:016x}")
 }
