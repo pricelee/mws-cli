@@ -16,6 +16,14 @@ pub async fn run(ctx: &CliContext, args: RawArgs) -> anyhow::Result<()> {
     let body = read_body(args.body.as_deref())?;
     let headers = parse_headers(&args.headers)?;
 
+    if ctx.all && method == reqwest::Method::GET {
+        let items = client.get_all_json(&mut account, &args.path).await?;
+        ctx.store.save(&account)?;
+        let mut stdout = std::io::stdout().lock();
+        write(ctx.format, &items, &mut stdout)?;
+        return Ok(());
+    }
+
     let (status, body_bytes, content_type) = client
         .send_request(&mut account, method, &args.path, body, &headers)
         .await?;

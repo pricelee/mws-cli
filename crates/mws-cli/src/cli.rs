@@ -15,6 +15,10 @@ pub struct Cli {
     /// Output format: json|table|yaml|tsv.
     #[arg(long, short = 'o', global = true, env = "MWS_OUTPUT")]
     pub output: Option<String>,
+    /// Follow @odata.nextLink and return the full collection. Only meaningful for GET requests
+    /// against collection endpoints.
+    #[arg(long, global = true)]
+    pub all: bool,
     /// Use Microsoft Graph beta endpoints.
     #[arg(long, global = true)]
     pub beta: bool,

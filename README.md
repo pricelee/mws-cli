@@ -4,11 +4,16 @@ One CLI for Microsoft 365 and Entra ID, built on Microsoft Graph. The Microsoft-
 
 ## Status
 
-Early development. M0 ships:
+Early development. M1 ships:
 
-- `mws auth login` — device-code (default for headless) or auth-code+PKCE (default for desktops)
+- `mws auth login` / `auth list` / `auth logout` — device-code (default for headless) or auth-code+PKCE (default for desktops)
 - `mws whoami` — print the signed-in user via Graph `/me`
+- `mws raw <METHOD> <path>` — escape hatch for any Graph endpoint; `--all` follows `@odata.nextLink`
+- `mws mail send --to ... --subject ... --body ... [--attachment ...]` — small attachments go inline; large ones use upload sessions
+- `mws drive cp <local> mws:/<remote>` — local→remote, single PUT for <4 MiB, upload session for larger
 - AES-256-GCM at-rest token storage with the OS keyring
+- 429/503 retry honoring `Retry-After`
+- Platform-conditional keyring backends (Windows / macOS / Linux)
 
 ## Quickstart
 
