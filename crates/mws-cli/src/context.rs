@@ -10,9 +10,9 @@ pub struct CliContext {
     pub tenant: String,
     pub client_id: String,
     pub format: Format,
-    pub beta: bool,
     pub verbose: bool,
     pub store: AccountStore,
+    #[allow(dead_code)]
     pub config_dir: PathBuf,
     pub graph_base: String,
 }
@@ -52,7 +52,6 @@ impl CliContext {
             tenant: args.tenant.clone().unwrap_or_else(|| mws_auth::DEFAULT_TENANT.to_string()),
             client_id: args.client_id.clone().unwrap_or_else(|| mws_auth::DEFAULT_CLIENT_ID.to_string()),
             format,
-            beta: args.beta,
             verbose: args.verbose,
             store,
             config_dir,
