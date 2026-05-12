@@ -26,28 +26,26 @@ mws --output json whoami | jq .userPrincipalName
 
 ## Scopes
 
-`mws auth login` requests `User.Read`, `offline_access`, `openid`, `profile` by default — enough for `mws whoami`. Other commands need additional scopes you grant with `--scope`:
+`mws auth login` requests the union of scopes needed by every shipped sugar command, so the typical case just works without thinking about consent:
 
-| Command | Extra scope |
-|---|---|
-| `mws mail send` | `Mail.Send` |
-| `mws drive cp` (upload) | `Files.ReadWrite` (any folder) |
-| `mws raw GET /me/messages` | `Mail.Read` |
-| `mws raw GET /me/events` | `Calendars.Read` |
+- `User.Read` — `mws whoami`
+- `Mail.Send` — `mws mail send`
+- `Files.ReadWrite` — `mws drive cp`
+- `offline_access`, `openid`, `profile` — OIDC baseline
 
-Request multiple at once:
+For ad-hoc Graph reads via `mws raw` you may need extra scopes (e.g. `Mail.Read` for `/me/messages`, `Calendars.Read` for `/me/events`). Add them with `--scope`:
 
 ```sh
-mws auth login --scope Mail.Send --scope Files.ReadWrite
+mws auth login --scope Mail.Read --scope Calendars.Read
 ```
 
-You can re-run `mws auth login` later with additional scopes — Microsoft prompts for incremental consent.
+Re-running `mws auth login` with additional scopes triggers Microsoft's incremental-consent flow.
 
 ## Manual smoke test (real tenant)
 
 1. `cargo build --release`
-2. `target/release/mws auth login --scope Mail.Send --scope Files.ReadWrite`
-3. Complete the flow in your browser (or follow the device-code prompt).
+2. `target/release/mws auth login`
+3. Complete the flow in your browser (or follow the device-code prompt). Microsoft asks you to consent to Mail.Send and Files.ReadWrite the first time.
 4. `target/release/mws whoami` should print your `displayName`, `userPrincipalName`, and `mail`.
 
 ### Shell quoting note (Windows cmd vs PowerShell)

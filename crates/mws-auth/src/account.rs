@@ -5,7 +5,29 @@ use crate::token::RedactedString;
 
 pub const DEFAULT_CLIENT_ID: &str = "14d82eec-204b-4c2f-b7e8-296a70dab67e";
 pub const DEFAULT_TENANT: &str = "common";
-pub const DEFAULT_SCOPES: &[&str] = &["User.Read", "offline_access", "openid", "profile"];
+
+/// Scopes requested by `mws auth login` by default — the union of scopes
+/// every shipped sugar command needs, so users don't have to think about
+/// per-command consent.
+///
+/// When a new sugar command ships, add its required scopes here. Power users
+/// who want to widen further (e.g. `Mail.Read` for ad-hoc `mws raw` use)
+/// supply `--scope` on the command line and the values are merged with these.
+///
+/// Per scope:
+/// - `User.Read` — `mws whoami`
+/// - `Mail.Send` — `mws mail send`
+/// - `Files.ReadWrite` — `mws drive cp` (user's drive, any folder)
+/// - `offline_access` — refresh tokens (so sessions persist past 1h)
+/// - `openid` / `profile` — id_token + basic profile claims
+pub const DEFAULT_SCOPES: &[&str] = &[
+    "User.Read",
+    "Mail.Send",
+    "Files.ReadWrite",
+    "offline_access",
+    "openid",
+    "profile",
+];
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Account {
