@@ -1,6 +1,7 @@
 //! Microsoft Graph HTTP client.
 
 pub mod error;
+pub mod paging;
 
 use mws_auth::account::Account;
 use mws_auth::Endpoints as TokenEndpoints;
