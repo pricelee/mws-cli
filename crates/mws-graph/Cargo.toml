@@ -9,11 +9,8 @@ license.workspace = true
 mws-auth = { path = "../mws-auth" }
 tokio.workspace = true
 reqwest.workspace = true
-serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
-tracing.workspace = true
-async-trait.workspace = true
 
 [dev-dependencies]
 wiremock.workspace = true
