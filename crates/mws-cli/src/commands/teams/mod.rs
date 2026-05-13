@@ -1,5 +1,6 @@
 pub mod list;
 pub mod post;
+pub mod presence;
 
 use crate::cli::{TeamsArgs, TeamsCmd};
 use crate::context::CliContext;
@@ -17,6 +18,6 @@ pub async fn run(ctx: &CliContext, args: TeamsArgs) -> anyhow::Result<()> {
                 post::run_chat_post(ctx, &p.chat, &p.message, p.html).await
             }
         },
-        TeamsCmd::Presence => anyhow::bail!("teams presence: implemented in Task 5"),
+        TeamsCmd::Presence => presence::run(ctx).await,
     }
 }
