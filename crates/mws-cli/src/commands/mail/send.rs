@@ -1,4 +1,3 @@
-use std::io::Read;
 use std::path::Path;
 
 use base64::Engine;
@@ -6,6 +5,7 @@ use mws_auth::Endpoints;
 use mws_graph::GraphClient;
 
 use crate::cli::SendArgs;
+use crate::commands::util::read_body_arg;
 use crate::context::CliContext;
 
 /// Combined attachment payload size at which we switch from inline (single sendMail)
@@ -35,18 +35,6 @@ pub async fn run(ctx: &CliContext, args: SendArgs) -> anyhow::Result<()> {
     ctx.store.save(&account)?;
     println!("Sent.");
     Ok(())
-}
-
-fn read_body_arg(s: &str) -> anyhow::Result<String> {
-    if s == "-" {
-        let mut buf = String::new();
-        std::io::stdin().read_to_string(&mut buf)?;
-        return Ok(buf);
-    }
-    if let Some(path) = s.strip_prefix('@') {
-        return Ok(std::fs::read_to_string(path)?);
-    }
-    Ok(s.to_string())
 }
 
 async fn send_inline(
