@@ -96,6 +96,8 @@ pub enum Command {
     Mail(MailArgs),
     /// Make a raw HTTP request to Microsoft Graph.
     Raw(RawArgs),
+    /// Microsoft Teams operations (list teams/channels/chats, post messages, presence).
+    Teams(TeamsArgs),
     /// Show the signed-in user.
     Whoami,
     /// Print a machine-readable description of a command (for agents/scripts).
@@ -290,6 +292,111 @@ pub struct RawArgs {
     /// Custom header in `key:value` form. Repeatable.
     #[arg(long = "header", short = 'H')]
     pub headers: Vec<String>,
+}
+
+const TEAMS_LONG_ABOUT: &str = "\
+Microsoft Teams operations: list joined teams and their channels, post
+to channels and chats, and read your presence.
+
+Required scopes (already in DEFAULT_SCOPES):
+  Team.ReadBasic.All, Channel.ReadBasic.All, ChannelMessage.Send,
+  Chat.ReadWrite, Chat.Create, Presence.Read.";
+
+const TEAMS_AFTER_HELP: &str = "\
+EXAMPLES:
+  # List teams you're a member of
+  mws teams list
+
+  # List channels in a team
+  mws teams channels --team <TEAM-ID>
+
+  # Post to a channel (plain text)
+  mws teams post --team <TEAM-ID> --channel <CHANNEL-ID> --message \"hello\"
+
+  # Post HTML (from a file)
+  mws teams post --team <T> --channel <C> --html --message @./note.html
+
+  # List your chats
+  mws teams chats
+
+  # Post to a chat
+  mws teams chat post --chat <CHAT-ID> --message \"ping\"
+
+  # Your presence
+  mws teams presence
+
+  # Dry-run any post (prints prepared request, doesn't send)
+  mws teams post --team T --channel C --message hi --dry-run";
+
+#[derive(Debug, clap::Args)]
+#[command(long_about = TEAMS_LONG_ABOUT, after_help = TEAMS_AFTER_HELP)]
+pub struct TeamsArgs {
+    #[command(subcommand)]
+    pub cmd: TeamsCmd,
+}
+
+#[derive(Debug, clap::Subcommand)]
+pub enum TeamsCmd {
+    /// List teams you're a member of (GET /me/joinedTeams).
+    List,
+    /// List channels in a team (GET /teams/{id}/channels).
+    Channels(ChannelsArgs),
+    /// Post a message to a channel.
+    Post(ChannelPostArgs),
+    /// List your chats (GET /me/chats).
+    Chats,
+    /// Chat operations (subcommands).
+    Chat(ChatArgs),
+    /// Show your presence (GET /me/presence).
+    Presence,
+}
+
+#[derive(Debug, clap::Args)]
+pub struct ChannelsArgs {
+    /// Team id.
+    #[arg(long)]
+    pub team: String,
+}
+
+#[derive(Debug, clap::Args)]
+pub struct ChannelPostArgs {
+    /// Team id.
+    #[arg(long)]
+    pub team: String,
+    /// Channel id.
+    #[arg(long)]
+    pub channel: String,
+    /// Message body. Literal, or `@file`, or `-` for stdin.
+    #[arg(long)]
+    pub message: String,
+    /// Treat the message as HTML (default: plain text).
+    #[arg(long)]
+    pub html: bool,
+}
+
+#[derive(Debug, clap::Args)]
+pub struct ChatArgs {
+    #[command(subcommand)]
+    pub action: ChatAction,
+}
+
+#[derive(Debug, clap::Subcommand)]
+pub enum ChatAction {
+    /// Post a message to a chat.
+    Post(ChatPostArgs),
+}
+
+#[derive(Debug, clap::Args)]
+pub struct ChatPostArgs {
+    /// Chat id.
+    #[arg(long)]
+    pub chat: String,
+    /// Message body. Literal, or `@file`, or `-` for stdin.
+    #[arg(long)]
+    pub message: String,
+    /// Treat the message as HTML (default: plain text).
+    #[arg(long)]
+    pub html: bool,
 }
 
 #[derive(Debug, clap::Args)]

@@ -28,6 +28,7 @@ async fn main() -> ExitCode {
         cli::Command::Drive(a) => commands::drive::run(&ctx, a).await,
         cli::Command::Mail(a) => commands::mail::run(&ctx, a).await,
         cli::Command::Raw(a) => commands::raw::run(&ctx, a).await,
+        cli::Command::Teams(a) => commands::teams::run(&ctx, a).await,
         cli::Command::Whoami => commands::whoami::run(&ctx).await,
         cli::Command::Describe(a) => commands::describe::run(a),
     };

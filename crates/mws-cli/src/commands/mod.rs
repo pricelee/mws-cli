@@ -3,4 +3,5 @@ pub mod describe;
 pub mod drive;
 pub mod mail;
 pub mod raw;
+pub mod teams;
 pub mod whoami;
