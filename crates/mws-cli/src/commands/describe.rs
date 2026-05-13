@@ -47,6 +47,12 @@ fn describe_root() -> Value {
             {"name": "raw", "description": "Make a raw HTTP request to Microsoft Graph (GET/POST/PATCH/PUT/DELETE)"},
             {"name": "mail send", "description": "Send an email"},
             {"name": "drive cp", "description": "Copy a file local→remote (M1) on OneDrive"},
+            {"name": "teams list", "description": "List joined Microsoft Teams"},
+            {"name": "teams channels", "description": "List channels in a team"},
+            {"name": "teams post", "description": "Post a message to a Teams channel"},
+            {"name": "teams chats", "description": "List your Teams chats"},
+            {"name": "teams chat post", "description": "Post a message to a Teams chat"},
+            {"name": "teams presence", "description": "Show your Teams presence"},
             {"name": "describe", "description": "This command — print a machine-readable command/scope catalog"},
         ],
         "subcommands_for_detail": "Run `mws describe <command>` for per-command schema; `mws describe scopes` for the scope catalog.",
@@ -200,6 +206,74 @@ fn describe_command(path: &[String]) -> anyhow::Result<Value> {
                 {"description": "Large file (auto upload-session)", "command": "mws drive cp .\\backup.zip mws:/Backups/backup.zip"},
             ],
         }),
+        "teams list" => json!({
+            "name": "teams list",
+            "description": "List teams the signed-in user is a member of (GET /me/joinedTeams).",
+            "args": [],
+            "scopes_required": ["Team.ReadBasic.All"],
+            "examples": [
+                {"description": "Table output", "command": "mws teams list"},
+                {"description": "Paginate all teams", "command": "mws --all teams list"},
+            ],
+        }),
+        "teams channels" => json!({
+            "name": "teams channels",
+            "description": "List channels in a team (GET /teams/{team}/channels).",
+            "flags": [{"name": "team", "type": "string", "required": true}],
+            "scopes_required": ["Channel.ReadBasic.All"],
+            "examples": [
+                {"description": "Channels for a team", "command": "mws teams channels --team <TEAM-ID>"},
+            ],
+        }),
+        "teams post" => json!({
+            "name": "teams post",
+            "description": "Post a message to a Teams channel.",
+            "flags": [
+                {"name": "team", "type": "string", "required": true},
+                {"name": "channel", "type": "string", "required": true},
+                {"name": "message", "type": "string", "required": true,
+                 "description": "Literal text, `@file`, or `-` for stdin"},
+                {"name": "html", "type": "bool"},
+            ],
+            "scopes_required": ["ChannelMessage.Send"],
+            "examples": [
+                {"description": "Plain text", "command": "mws teams post --team T --channel C --message \"hi\""},
+                {"description": "HTML from file", "command": "mws teams post --team T --channel C --html --message @./note.html"},
+                {"description": "Dry-run", "command": "mws teams post --team T --channel C --message hi --dry-run"},
+            ],
+        }),
+        "teams chats" => json!({
+            "name": "teams chats",
+            "description": "List your Teams chats (GET /me/chats).",
+            "args": [],
+            "scopes_required": ["Chat.ReadWrite"],
+            "examples": [
+                {"description": "Table output", "command": "mws teams chats"},
+            ],
+        }),
+        "teams chat post" => json!({
+            "name": "teams chat post",
+            "description": "Post a message to a Teams chat.",
+            "flags": [
+                {"name": "chat", "type": "string", "required": true},
+                {"name": "message", "type": "string", "required": true,
+                 "description": "Literal text, `@file`, or `-` for stdin"},
+                {"name": "html", "type": "bool"},
+            ],
+            "scopes_required": ["Chat.ReadWrite"],
+            "examples": [
+                {"description": "Send", "command": "mws teams chat post --chat C --message ping"},
+            ],
+        }),
+        "teams presence" => json!({
+            "name": "teams presence",
+            "description": "Show your Microsoft Teams presence (GET /me/presence).",
+            "args": [],
+            "scopes_required": ["Presence.Read"],
+            "examples": [
+                {"description": "Default table", "command": "mws teams presence"},
+            ],
+        }),
         "describe" => json!({
             "name": "describe",
             "description": "Machine-readable catalog of mws commands and scopes.",
@@ -240,7 +314,25 @@ mod tests {
         assert!(names.contains(&"raw"));
         assert!(names.contains(&"mail send"));
         assert!(names.contains(&"drive cp"));
+        assert!(names.contains(&"teams post"));
+        assert!(names.contains(&"teams presence"));
         assert!(names.contains(&"describe"));
+    }
+
+    #[test]
+    fn describe_teams_subcommands() {
+        for name in [
+            "teams list",
+            "teams channels",
+            "teams post",
+            "teams chats",
+            "teams chat post",
+            "teams presence",
+        ] {
+            let parts: Vec<String> = name.split_whitespace().map(str::to_string).collect();
+            let v = describe_command(&parts).unwrap();
+            assert_eq!(v["name"], name);
+        }
     }
 
     #[test]
