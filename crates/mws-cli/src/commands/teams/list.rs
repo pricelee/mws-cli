@@ -17,6 +17,10 @@ pub async fn run_channels(ctx: &CliContext, team: &str) -> anyhow::Result<()> {
     fetch_and_print(ctx, &path).await
 }
 
+pub async fn run_chats(ctx: &CliContext) -> anyhow::Result<()> {
+    fetch_and_print(ctx, "/me/chats").await
+}
+
 /// Reject obviously bad ids early — empty, whitespace, or anything containing
 /// `/`, `\`, `?`, `#`, or a control character. Graph would also reject these,
 /// but we want a usage-style error rather than a 400 from the server.

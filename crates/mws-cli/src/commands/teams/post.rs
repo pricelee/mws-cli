@@ -34,6 +34,19 @@ pub async fn run_channel_post(
     post_message(ctx, &path, body).await
 }
 
+pub async fn run_chat_post(
+    ctx: &CliContext,
+    chat: &str,
+    message: &str,
+    html: bool,
+) -> anyhow::Result<()> {
+    validate_id("chat", chat)?;
+    let content = read_body_arg(message)?;
+    let body = build_message_body(&content, html);
+    let path = format!("/chats/{chat}/messages");
+    post_message(ctx, &path, body).await
+}
+
 async fn post_message(ctx: &CliContext, path: &str, body: Value) -> anyhow::Result<()> {
     if ctx.dry_run {
         let preview = serde_json::json!({

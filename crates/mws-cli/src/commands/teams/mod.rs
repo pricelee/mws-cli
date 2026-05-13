@@ -11,8 +11,12 @@ pub async fn run(ctx: &CliContext, args: TeamsArgs) -> anyhow::Result<()> {
         TeamsCmd::Post(p) => {
             post::run_channel_post(ctx, &p.team, &p.channel, &p.message, p.html).await
         }
-        TeamsCmd::Chats => anyhow::bail!("teams chats: implemented in Task 4"),
-        TeamsCmd::Chat(_) => anyhow::bail!("teams chat post: implemented in Task 4"),
+        TeamsCmd::Chats => list::run_chats(ctx).await,
+        TeamsCmd::Chat(c) => match c.action {
+            crate::cli::ChatAction::Post(p) => {
+                post::run_chat_post(ctx, &p.chat, &p.message, p.html).await
+            }
+        },
         TeamsCmd::Presence => anyhow::bail!("teams presence: implemented in Task 5"),
     }
 }
