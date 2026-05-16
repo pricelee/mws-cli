@@ -53,6 +53,11 @@ fn describe_root() -> Value {
             {"name": "teams chats", "description": "List your Teams chats"},
             {"name": "teams chat post", "description": "Post a message to a Teams chat"},
             {"name": "teams presence", "description": "Show your Teams presence"},
+            {"name": "calendar events", "description": "List calendar events in a time window"},
+            {"name": "calendar create", "description": "Create a calendar event"},
+            {"name": "calendar find-times", "description": "Find meeting times for a set of attendees"},
+            {"name": "calendar rsvp", "description": "RSVP (accept|decline|tentative) to an event"},
+            {"name": "calendar cancel", "description": "Cancel a meeting"},
             {"name": "describe", "description": "This command — print a machine-readable command/scope catalog"},
         ],
         "subcommands_for_detail": "Run `mws-cli describe <command>` for per-command schema; `mws-cli describe scopes` for the scope catalog.",
@@ -274,6 +279,84 @@ fn describe_command(path: &[String]) -> anyhow::Result<Value> {
                 {"description": "Default table", "command": "mws-cli teams presence"},
             ],
         }),
+        "calendar events" => json!({
+            "name": "calendar events",
+            "description": "List events in a time window. Defaults to now → +7 days.",
+            "flags": [
+                {"name": "start", "type": "string", "description": "ISO 8601 (default: now)"},
+                {"name": "end", "type": "string", "description": "ISO 8601 (default: start + 7 days)"},
+                {"name": "top", "type": "u32", "description": "Page size"},
+            ],
+            "scopes_required": ["Calendars.ReadWrite"],
+            "examples": [
+                {"description": "This week's events", "command": "mws-cli calendar events"},
+                {"description": "Explicit window", "command": "mws-cli calendar events --start 2026-05-16T00:00:00Z --end 2026-05-23T00:00:00Z"},
+                {"description": "Paginate all", "command": "mws-cli --all calendar events"},
+            ],
+        }),
+        "calendar create" => json!({
+            "name": "calendar create",
+            "description": "Create a calendar event.",
+            "flags": [
+                {"name": "subject", "type": "string", "required": true},
+                {"name": "start", "type": "string", "required": true, "description": "ISO 8601"},
+                {"name": "end", "type": "string", "required": true, "description": "ISO 8601"},
+                {"name": "attendee", "type": "list<string>", "repeatable": true},
+                {"name": "body", "type": "string", "description": "Literal, @file, or - for stdin"},
+                {"name": "html", "type": "bool"},
+                {"name": "location", "type": "string"},
+                {"name": "online", "type": "bool", "description": "Add Teams meeting link"},
+                {"name": "timezone", "type": "string", "description": "Override timeZone (default: UTC)"},
+            ],
+            "scopes_required": ["Calendars.ReadWrite"],
+            "examples": [
+                {"description": "Simple", "command": "mws-cli calendar create --subject Sync --start 2026-05-17T14:00:00Z --end 2026-05-17T15:00:00Z --attendee a@x.com"},
+                {"description": "Online + body", "command": "mws-cli calendar create --subject Standup --start 2026-05-17T09:00:00Z --end 2026-05-17T09:30:00Z --attendee a@x.com --attendee b@x.com --online --body @./agenda.md --html"},
+            ],
+        }),
+        "calendar find-times" => json!({
+            "name": "calendar find-times",
+            "description": "Find meeting times for a set of attendees (POST /me/findMeetingTimes).",
+            "flags": [
+                {"name": "attendee", "type": "list<string>", "required": true, "repeatable": true},
+                {"name": "duration", "type": "string", "required": true, "description": "ISO 8601 duration (e.g., PT30M)"},
+                {"name": "start", "type": "string"},
+                {"name": "end", "type": "string"},
+                {"name": "top", "type": "u32"},
+            ],
+            "scopes_required": ["Calendars.ReadWrite"],
+            "examples": [
+                {"description": "30-min slot", "command": "mws-cli calendar find-times --attendee alice@x.com --duration PT30M"},
+            ],
+        }),
+        "calendar rsvp" => json!({
+            "name": "calendar rsvp",
+            "description": "RSVP to an event (accept | decline | tentative).",
+            "flags": [
+                {"name": "event", "type": "string", "required": true},
+                {"name": "response", "type": "enum", "values": ["accept", "decline", "tentative"], "required": true},
+                {"name": "comment", "type": "string"},
+                {"name": "no-reply", "type": "bool"},
+            ],
+            "scopes_required": ["Calendars.ReadWrite"],
+            "examples": [
+                {"description": "Accept", "command": "mws-cli calendar rsvp --event <ID> --response accept"},
+                {"description": "Decline with comment", "command": "mws-cli calendar rsvp --event <ID> --response decline --comment conflict"},
+            ],
+        }),
+        "calendar cancel" => json!({
+            "name": "calendar cancel",
+            "description": "Cancel a meeting (sends cancellation notice to attendees).",
+            "flags": [
+                {"name": "event", "type": "string", "required": true},
+                {"name": "comment", "type": "string"},
+            ],
+            "scopes_required": ["Calendars.ReadWrite"],
+            "examples": [
+                {"description": "Cancel", "command": "mws-cli calendar cancel --event <ID>"},
+                {"description": "With comment", "command": "mws-cli calendar cancel --event <ID> --comment rescheduling"},
+            ],
+        }),
         "describe" => json!({
             "name": "describe",
             "description": "Machine-readable catalog of mws-cli commands and scopes.",
@@ -316,6 +399,8 @@ mod tests {
         assert!(names.contains(&"drive cp"));
         assert!(names.contains(&"teams post"));
         assert!(names.contains(&"teams presence"));
+        assert!(names.contains(&"calendar events"));
+        assert!(names.contains(&"calendar create"));
         assert!(names.contains(&"describe"));
     }
 
@@ -328,6 +413,21 @@ mod tests {
             "teams chats",
             "teams chat post",
             "teams presence",
+        ] {
+            let parts: Vec<String> = name.split_whitespace().map(str::to_string).collect();
+            let v = describe_command(&parts).unwrap();
+            assert_eq!(v["name"], name);
+        }
+    }
+
+    #[test]
+    fn describe_calendar_subcommands() {
+        for name in [
+            "calendar events",
+            "calendar create",
+            "calendar find-times",
+            "calendar rsvp",
+            "calendar cancel",
         ] {
             let parts: Vec<String> = name.split_whitespace().map(str::to_string).collect();
             let v = describe_command(&parts).unwrap();

@@ -4,7 +4,7 @@ One CLI for Microsoft 365 and Entra ID, built on Microsoft Graph. The Microsoft-
 
 ## Status
 
-Early development. M1 + M2a ships:
+Early development. M1 + M2a + M2b ships:
 
 - `mws-cli auth login` / `auth list` / `auth logout` — device-code (default for headless) or auth-code+PKCE (default for desktops)
 - `mws-cli whoami` — print the signed-in user via Graph `/me`
@@ -15,6 +15,11 @@ Early development. M1 + M2a ships:
 - `mws-cli teams post --team <id> --channel <id> --message <text> [--html]` — channel post (supports `--dry-run`)
 - `mws-cli teams chat post --chat <id> --message <text> [--html]` — chat post (supports `--dry-run`)
 - `mws-cli teams presence` — your Microsoft Teams presence
+- `mws-cli calendar events [--start <ISO>] [--end <ISO>]` — list events (default: next 7 days)
+- `mws-cli calendar create --subject ... --start ... --end ... --attendee ... [--online]` — create event (supports `--dry-run`)
+- `mws-cli calendar find-times --attendee ... --duration PT30M` — find meeting times
+- `mws-cli calendar rsvp --event <id> --response accept|decline|tentative` — RSVP
+- `mws-cli calendar cancel --event <id> [--comment ...]` — cancel a meeting
 - `mws-cli describe [<command>|scopes]` — machine-readable command/scope catalog (for agents)
 - AES-256-GCM at-rest token storage with the OS keyring
 - 429/503 retry honoring `Retry-After`
