@@ -1,9 +1,15 @@
 [package]
 name = "mws-output"
-version = "0.0.1"
+version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+description = "Output formatting (JSON/table/YAML/TSV) for the mws CLI."
+keywords = ["mws", "cli", "output", "json", "table"]
+categories = ["command-line-interface"]
 
 [dependencies]
 serde.workspace = true

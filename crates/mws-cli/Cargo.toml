@@ -1,19 +1,26 @@
 [package]
 name = "mws-cli"
-version = "0.0.1"
+version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+description = "mws — one CLI for Microsoft 365 / Microsoft Graph (Outlook mail, OneDrive, Teams, Entra). cargo install mws-cli."
+keywords = ["microsoft", "m365", "graph", "outlook", "teams"]
+categories = ["command-line-utilities", "authentication"]
+readme = "../../README.md"
 
 [[bin]]
 name = "mws"
 path = "src/main.rs"
 
 [dependencies]
-mws-auth = { path = "../mws-auth" }
-mws-graph = { path = "../mws-graph" }
-mws-output = { path = "../mws-output" }
-mws-keyring = { path = "../mws-keyring" }
+mws-auth = { path = "../mws-auth", version = "0.0.1" }
+mws-graph = { path = "../mws-graph", version = "0.0.1" }
+mws-output = { path = "../mws-output", version = "0.0.1" }
+mws-keyring = { path = "../mws-keyring", version = "0.0.1" }
 clap.workspace = true
 tokio.workspace = true
 serde_json.workspace = true

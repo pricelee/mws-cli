@@ -1,9 +1,15 @@
 [package]
 name = "mws-keyring"
-version = "0.0.1"
+version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+description = "OS-keyring-backed AES-256-GCM credential vault used by the mws CLI."
+keywords = ["mws", "keyring", "credentials", "aes-gcm", "vault"]
+categories = ["authentication", "cryptography"]
 
 [dependencies]
 aes-gcm.workspace = true

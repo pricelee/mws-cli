@@ -3,10 +3,15 @@ resolver = "2"
 members = ["crates/mws-cli", "crates/mws-auth", "crates/mws-graph", "crates/mws-keyring", "crates/mws-output"]
 
 [workspace.package]
+version = "0.0.1"
 edition = "2021"
 rust-version = "1.86"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/pricelee/mws"
+homepage = "https://github.com/pricelee/mws"
+authors = ["pricelee <pricelee@gmail.com>"]
+keywords = ["microsoft", "graph", "m365", "cli", "entra"]
+categories = ["command-line-utilities", "authentication"]
 
 [workspace.dependencies]
 tokio = { version = "1.41", features = ["macros", "rt-multi-thread", "fs", "net", "io-util", "time", "sync"] }
