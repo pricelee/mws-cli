@@ -8,7 +8,7 @@ fn prints_help() {
 
 #[test]
 fn version_flag_works() {
-    Command::cargo_bin("mws-cli").unwrap().arg("--version").assert().success().stdout(contains("0.0.1"));
+    Command::cargo_bin("mws-cli").unwrap().arg("--version").assert().success().stdout(contains(env!("CARGO_PKG_VERSION")));
 }
 
 #[test]
