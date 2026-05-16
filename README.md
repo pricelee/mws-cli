@@ -190,10 +190,7 @@ src/
     ├── auth.rs whoami.rs raw.rs describe.rs util.rs
     ├── mail/   drive/   teams/   calendar/
 tests/                         # integration tests (assert_cmd + wiremock)
-docs/superpowers/              # design specs and implementation plans per milestone
 ```
-
-Design and per-milestone plans live in [`docs/superpowers/`](docs/superpowers/).
 
 ## Status & roadmap
 
