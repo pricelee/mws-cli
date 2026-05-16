@@ -1312,11 +1312,21 @@ dependencies = [
 ]
 
 [[package]]
-name = "mws-auth"
+name = "mws-cli"
 version = "0.0.1"
 dependencies = [
+ "aes-gcm",
+ "anyhow",
+ "argon2",
+ "assert_cmd",
  "base64 0.22.1",
- "mws-keyring",
+ "bytes",
+ "clap",
+ "comfy-table",
+ "directories",
+ "hex",
+ "keyring",
+ "predicates",
  "rand 0.8.6",
  "reqwest",
  "serde",
@@ -1326,71 +1336,10 @@ dependencies = [
  "thiserror 1.0.69",
  "tiny_http",
  "tokio",
- "url",
- "wiremock",
-]
-
-[[package]]
-name = "mws-cli"
-version = "0.0.1"
-dependencies = [
- "anyhow",
- "assert_cmd",
- "base64 0.22.1",
- "clap",
- "directories",
- "mws-auth",
- "mws-graph",
- "mws-keyring",
- "mws-output",
- "predicates",
- "reqwest",
- "serde_json",
- "tempfile",
- "tokio",
  "tracing",
  "tracing-subscriber",
+ "url",
  "wiremock",
-]
-
-[[package]]
-name = "mws-graph"
-version = "0.0.1"
-dependencies = [
- "bytes",
- "mws-auth",
- "rand 0.8.6",
- "reqwest",
- "serde_json",
- "tempfile",
- "thiserror 1.0.69",
- "tokio",
- "wiremock",
-]
-
-[[package]]
-name = "mws-keyring"
-version = "0.0.1"
-dependencies = [
- "aes-gcm",
- "argon2",
- "hex",
- "keyring",
- "rand 0.8.6",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 1.0.69",
-]
-
-[[package]]
-name = "mws-output"
-version = "0.0.1"
-dependencies = [
- "comfy-table",
- "serde",
- "serde_json",
- "thiserror 1.0.69",
 ]
 
 [[package]]

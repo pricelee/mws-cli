@@ -1,8 +1,5 @@
-[workspace]
-resolver = "2"
-members = ["crates/mws-cli", "crates/mws-auth", "crates/mws-graph", "crates/mws-keyring", "crates/mws-output"]
-
-[workspace.package]
+[package]
+name = "mws-cli"
 version = "0.0.1"
 edition = "2021"
 rust-version = "1.86"
@@ -10,10 +7,17 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/pricelee/mws-cli"
 homepage = "https://github.com/pricelee/mws-cli"
 authors = ["pricelee <pricelee@gmail.com>"]
-keywords = ["microsoft", "graph", "m365", "cli", "entra"]
+description = "mws — one CLI for Microsoft 365 / Microsoft Graph (Outlook mail, OneDrive, Teams, Entra). cargo install mws-cli."
+keywords = ["microsoft", "m365", "graph", "outlook", "teams"]
 categories = ["command-line-utilities", "authentication"]
+readme = "README.md"
 
-[workspace.dependencies]
+[[bin]]
+name = "mws"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.5", features = ["derive", "env"] }
 tokio = { version = "1.41", features = ["macros", "rt-multi-thread", "fs", "net", "io-util", "time", "sync"] }
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
 serde = { version = "1", features = ["derive"] }
@@ -21,21 +25,79 @@ serde_json = "1"
 thiserror = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-clap = { version = "4.5", features = ["derive", "env"] }
 comfy-table = "7"
-oauth2 = { version = "4.4", default-features = false, features = ["reqwest", "rustls-tls"] }
-# keyring moved to mws-keyring per-target (platform-conditional features)
 aes-gcm = "0.10"
 argon2 = "0.5"
 rand = "0.8"
 directories = "5"
 tiny_http = "0.12"
 url = "2"
-async-trait = "0.1"
 bytes = "1"
 base64 = "0.22"
-# dev
-wiremock = "0.5"
+sha2 = "0.10"
+hex = "0.4"
+anyhow = "1"
+
+[target.'cfg(target_os = "windows")'.dependencies.keyring]
+version = "3.6"
+features = ["windows-native"]
+
+[target.'cfg(target_os = "macos")'.dependencies.keyring]
+version = "3.6"
+features = ["apple-native"]
+
+[target.'cfg(target_os = "linux")'.dependencies.keyring]
+version = "3.6"
+features = ["linux-native-sync-persistent"]
+
+[dev-dependencies]
 assert_cmd = "2"
 predicates = "3"
 tempfile = "3"
+wiremock = "0.5"
+tokio = { version = "1.41", features = ["macros", "rt-multi-thread", "fs", "net", "io-util", "time", "sync", "test-util"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "blocking"] }
+
+[features]
+default = []
+test-helpers = []
+
+[[test]]
+name = "auth_login"
+required-features = ["test-helpers"]
+
+[[test]]
+name = "whoami"
+required-features = ["test-helpers"]
+
+[[test]]
+name = "auth_logout"
+required-features = ["test-helpers"]
+
+[[test]]
+name = "auth_list"
+required-features = ["test-helpers"]
+
+[[test]]
+name = "raw"
+required-features = ["test-helpers"]
+
+[[test]]
+name = "mail_send"
+required-features = ["test-helpers"]
+
+[[test]]
+name = "drive_cp"
+required-features = ["test-helpers"]
+
+[[test]]
+name = "raw_all"
+required-features = ["test-helpers"]
+
+[[test]]
+name = "safety"
+required-features = ["test-helpers"]
+
+[[test]]
+name = "teams"
+required-features = ["test-helpers"]
