@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod calendar;
 pub mod describe;
 pub mod drive;
 pub mod mail;

@@ -90,6 +90,8 @@ pub struct Cli {
 pub enum Command {
     /// Authentication.
     Auth(AuthArgs),
+    /// Microsoft 365 Calendar operations (events, create, find-times, rsvp, cancel).
+    Calendar(CalendarArgs),
     /// OneDrive / SharePoint operations.
     Drive(DriveArgs),
     /// Mail operations.
@@ -397,6 +399,150 @@ pub struct ChatPostArgs {
     /// Treat the message as HTML (default: plain text).
     #[arg(long)]
     pub html: bool,
+}
+
+const CALENDAR_LONG_ABOUT: &str = "\
+Microsoft 365 Calendar operations: list upcoming events, create new
+events (with attendees and optional Teams online meeting), find a time
+that works for a set of attendees, RSVP to invites, and cancel meetings.
+
+Required scope (already in DEFAULT_SCOPES): Calendars.ReadWrite.";
+
+const CALENDAR_AFTER_HELP: &str = "\
+EXAMPLES:
+  # What's on my calendar this week
+  mws-cli calendar events
+
+  # A specific window (ISO 8601 UTC; trailing Z)
+  mws-cli calendar events --start 2026-05-16T00:00:00Z --end 2026-05-23T00:00:00Z
+
+  # Create an event with attendees and a Teams meeting link
+  mws-cli calendar create --subject \"Weekly Sync\" \\
+    --start 2026-05-17T14:00:00Z --end 2026-05-17T15:00:00Z \\
+    --attendee alice@x.com --attendee bob@x.com --online --body \"agenda...\"
+
+  # Find a 30-min slot
+  mws-cli calendar find-times --attendee alice@x.com --duration PT30M
+
+  # RSVP
+  mws-cli calendar rsvp --event <ID> --response accept
+  mws-cli calendar rsvp --event <ID> --response decline --comment \"conflict\"
+
+  # Cancel a meeting (sends cancellation notice to attendees)
+  mws-cli calendar cancel --event <ID> --comment \"rescheduling\"
+
+  # Dry-run any write to inspect the prepared request
+  mws-cli calendar create ... --dry-run";
+
+#[derive(Debug, clap::Args)]
+#[command(long_about = CALENDAR_LONG_ABOUT, after_help = CALENDAR_AFTER_HELP)]
+pub struct CalendarArgs {
+    #[command(subcommand)]
+    pub cmd: CalendarCmd,
+}
+
+#[derive(Debug, clap::Subcommand)]
+pub enum CalendarCmd {
+    /// List events in a time window (default: now → +7 days).
+    Events(EventsArgs),
+    /// Create an event.
+    Create(CreateArgs),
+    /// Find meeting times for a set of attendees.
+    #[command(name = "find-times")]
+    FindTimes(FindTimesArgs),
+    /// RSVP (accept | decline | tentative).
+    Rsvp(RsvpArgs),
+    /// Cancel a meeting (sends cancellation notice).
+    Cancel(CancelArgs),
+}
+
+#[derive(Debug, clap::Args)]
+pub struct EventsArgs {
+    /// Window start (RFC 3339 / ISO 8601 with offset or Z). Defaults to now.
+    #[arg(long)]
+    pub start: Option<String>,
+    /// Window end. Defaults to start + 7 days.
+    #[arg(long)]
+    pub end: Option<String>,
+    /// Max events to return per page (Graph default: 10).
+    #[arg(long)]
+    pub top: Option<u32>,
+}
+
+#[derive(Debug, clap::Args)]
+pub struct CreateArgs {
+    /// Event subject (required).
+    #[arg(long)]
+    pub subject: String,
+    /// Start time (RFC 3339 / ISO 8601).
+    #[arg(long)]
+    pub start: String,
+    /// End time (RFC 3339 / ISO 8601).
+    #[arg(long)]
+    pub end: String,
+    /// Attendee email (repeatable).
+    #[arg(long = "attendee")]
+    pub attendees: Vec<String>,
+    /// Body. Literal, `@file`, or `-` for stdin.
+    #[arg(long)]
+    pub body: Option<String>,
+    /// Treat body as HTML (default: text).
+    #[arg(long)]
+    pub html: bool,
+    /// Location string.
+    #[arg(long)]
+    pub location: Option<String>,
+    /// Add a Microsoft Teams online meeting link.
+    #[arg(long)]
+    pub online: bool,
+    /// Override the `timeZone` field on start/end (default: "UTC").
+    #[arg(long)]
+    pub timezone: Option<String>,
+}
+
+#[derive(Debug, clap::Args)]
+pub struct FindTimesArgs {
+    /// Attendee email (repeatable, required).
+    #[arg(long = "attendee", required = true)]
+    pub attendees: Vec<String>,
+    /// Meeting duration as ISO 8601 (e.g., PT30M, PT1H).
+    #[arg(long)]
+    pub duration: String,
+    /// Window start; default = now.
+    #[arg(long)]
+    pub start: Option<String>,
+    /// Window end; default = start + 7 days.
+    #[arg(long)]
+    pub end: Option<String>,
+    /// Max suggestions to return (Graph default ~3).
+    #[arg(long)]
+    pub top: Option<u32>,
+}
+
+#[derive(Debug, clap::Args)]
+pub struct RsvpArgs {
+    /// Event id.
+    #[arg(long)]
+    pub event: String,
+    /// Response.
+    #[arg(long, value_parser = ["accept", "decline", "tentative"])]
+    pub response: String,
+    /// Optional comment in the response email.
+    #[arg(long)]
+    pub comment: Option<String>,
+    /// Do not send a response email back to the organizer.
+    #[arg(long)]
+    pub no_reply: bool,
+}
+
+#[derive(Debug, clap::Args)]
+pub struct CancelArgs {
+    /// Event id (must be a meeting the user organizes).
+    #[arg(long)]
+    pub event: String,
+    /// Cancellation comment included in the email to attendees.
+    #[arg(long)]
+    pub comment: Option<String>,
 }
 
 #[derive(Debug, clap::Args)]

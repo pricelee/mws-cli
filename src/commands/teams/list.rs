@@ -1,6 +1,7 @@
 //! `mws-cli teams list|channels|chats` — collection GETs.
 
 use crate::auth::Endpoints;
+use crate::commands::util::validate_id;
 use crate::graph::GraphClient;
 use crate::output::write;
 use serde_json::Value;
@@ -19,19 +20,6 @@ pub async fn run_channels(ctx: &CliContext, team: &str) -> anyhow::Result<()> {
 
 pub async fn run_chats(ctx: &CliContext) -> anyhow::Result<()> {
     fetch_and_print(ctx, "/me/chats").await
-}
-
-/// Reject obviously bad ids early — empty, whitespace, or anything containing
-/// `/`, `\`, `?`, `#`, or a control character. Graph would also reject these,
-/// but we want a usage-style error rather than a 400 from the server.
-pub(crate) fn validate_id(kind: &str, id: &str) -> anyhow::Result<()> {
-    if id.trim().is_empty() {
-        anyhow::bail!("--{kind} must not be empty");
-    }
-    if id.chars().any(|c| c == '/' || c == '\\' || c == '?' || c == '#' || c.is_control()) {
-        anyhow::bail!("--{kind} contains an invalid character: {id:?}");
-    }
-    Ok(())
 }
 
 async fn fetch_and_print(ctx: &CliContext, path: &str) -> anyhow::Result<()> {

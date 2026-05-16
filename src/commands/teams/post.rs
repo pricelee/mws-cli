@@ -5,8 +5,7 @@ use crate::graph::GraphClient;
 use crate::output::write;
 use serde_json::Value;
 
-use crate::commands::teams::list::validate_id;
-use crate::commands::util::read_body_arg;
+use crate::commands::util::{read_body_arg, validate_id};
 use crate::context::CliContext;
 
 /// JSON body for a Teams message post.

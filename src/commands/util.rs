@@ -18,6 +18,19 @@ pub fn read_body_arg(s: &str) -> anyhow::Result<String> {
     Ok(s.to_string())
 }
 
+/// Reject obviously bad Graph ids early — empty, whitespace, or anything
+/// containing `/`, `\`, `?`, `#`, or a control character. Graph would also
+/// reject these, but we want a usage-style error rather than a 400.
+pub fn validate_id(kind: &str, id: &str) -> anyhow::Result<()> {
+    if id.trim().is_empty() {
+        anyhow::bail!("--{kind} must not be empty");
+    }
+    if id.chars().any(|c| c == '/' || c == '\\' || c == '?' || c == '#' || c.is_control()) {
+        anyhow::bail!("--{kind} contains an invalid character: {id:?}");
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -34,5 +47,18 @@ mod tests {
         std::fs::write(&p, "file contents").unwrap();
         let arg = format!("@{}", p.to_string_lossy());
         assert_eq!(read_body_arg(&arg).unwrap(), "file contents");
+    }
+
+    #[test]
+    fn validate_id_accepts_normal_ids() {
+        assert!(validate_id("team", "abc-123_XYZ").is_ok());
+        assert!(validate_id("chat", "19:abcdef@thread.tacv2").is_ok());
+    }
+
+    #[test]
+    fn validate_id_rejects_separators_and_control() {
+        for bad in &["", "  ", "a/b", "a\\b", "a?b", "a#b", "a\nb", "a\0b"] {
+            assert!(validate_id("x", bad).is_err(), "should reject {bad:?}");
+        }
     }
 }

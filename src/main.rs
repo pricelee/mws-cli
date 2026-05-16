@@ -29,6 +29,7 @@ async fn main() -> ExitCode {
         .init();
     let result = match args.command {
         cli::Command::Auth(a) => commands::auth::run(&ctx, a).await,
+        cli::Command::Calendar(a) => commands::calendar::run(&ctx, a).await,
         cli::Command::Drive(a) => commands::drive::run(&ctx, a).await,
         cli::Command::Mail(a) => commands::mail::run(&ctx, a).await,
         cli::Command::Raw(a) => commands::raw::run(&ctx, a).await,
