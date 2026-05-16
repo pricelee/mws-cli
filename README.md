@@ -161,13 +161,55 @@ mws-cli --account work mail send ...
 | People | `People.Read` |
 | Teams | `Presence.Read`, `Chat.ReadWrite`, `Chat.Create`, `Team.ReadBasic.All`, `Channel.ReadBasic.All`, `ChannelMessage.Send` |
 
-Power users / admins widen with `--scope`:
+### Adjusting the requested scopes
+
+`mws-cli auth login` has three flags that compose:
+
+| Flag | Effect |
+|---|---|
+| `--scope <SCOPE>` (repeatable) | **Add** to the default set. Most common use: opt into admin / `*.All` scopes. |
+| `--exclude-scope <SCOPE>` (repeatable) | **Drop** a scope from the default set. Use when your tenant blocks specific delegated scopes. |
+| `--no-default-scopes` | **Skip** DEFAULT_SCOPES entirely. Only the scopes you list with `--scope` are requested. |
+
+Resolution order: defaults → minus excludes → plus explicit adds. An explicit `--scope` always wins over `--exclude-scope` for the same scope name. If the final set is empty, sign-in errors out (Graph rejects empty-scope flows).
 
 ```sh
+# 1. Add admin-consent scopes (opens an admin-approval prompt if needed)
 mws-cli auth login --scope Sites.Read.All --scope Directory.Read.All
+
+# 2. Tenant blocks Tasks and Notes — drop them, keep the rest
+mws-cli auth login \
+  --exclude-scope Tasks.ReadWrite \
+  --exclude-scope Notes.ReadWrite
+
+# 3. Minimum-privilege sign-in — just identity, nothing else
+mws-cli auth login --no-default-scopes \
+  --scope openid \
+  --scope offline_access \
+  --scope User.Read
+
+# 4. Custom set tailored to one workload (mail only)
+mws-cli auth login --no-default-scopes \
+  --scope openid --scope offline_access --scope User.Read \
+  --scope Mail.ReadWrite --scope Mail.Send
 ```
 
-Re-running `mws-cli auth login` with new scopes triggers Microsoft's incremental-consent prompt; already-granted scopes are not re-prompted.
+Re-running `mws-cli auth login` with different scopes triggers Microsoft's incremental-consent prompt; already-granted scopes are not re-prompted.
+
+### Common admin-consent (`*.All`) scopes
+
+These typically need admin approval — opt in only when you know your tenant allows them:
+
+| Scope | Use |
+|---|---|
+| `Sites.Read.All` / `Sites.ReadWrite.All` | SharePoint sites |
+| `Files.Read.All` / `Files.ReadWrite.All` | All files including shared |
+| `Directory.Read.All` | Read directory (users, groups, devices) |
+| `User.Read.All` | All users in the org |
+| `Group.Read.All` / `Group.ReadWrite.All` | All groups |
+| `OnlineMeetings.ReadWrite` | Create/manage Teams meetings |
+| `Mail.Send.Shared` | Send from a shared mailbox |
+| `Calendars.ReadWrite.Shared` | Read/write shared calendars |
 
 Full machine-readable catalog: `mws-cli describe scopes`.
 
