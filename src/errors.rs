@@ -1,7 +1,7 @@
 //! Pretty error printing for the top-level binary.
 //!
 //! In particular, Graph 403 responses include the exact scopes the endpoint
-//! requires. We surface them as an actionable `mws auth login --scope ...`
+//! requires. We surface them as an actionable `mws-cli auth login --scope ...`
 //! hint instead of leaving the user to read the raw Graph error.
 
 use std::fmt::Write;
@@ -46,7 +46,7 @@ fn scope_hint(text: &str) -> Option<String> {
     }
     let _ = write!(
         hint,
-        "\nGrant one and re-run by signing in again:\n  mws auth login --scope {primary}"
+        "\nGrant one and re-run by signing in again:\n  mws-cli auth login --scope {primary}"
     );
     if scopes.len() > 1 {
         let _ = write!(
@@ -74,7 +74,7 @@ mod tests {
         let hint = scope_hint(err).expect("should produce a hint");
         assert!(hint.contains("Team.ReadBasic.All"));
         assert!(hint.contains("Directory.Read.All"));
-        assert!(hint.contains("mws auth login --scope Team.ReadBasic.All"));
+        assert!(hint.contains("mws-cli auth login --scope Team.ReadBasic.All"));
     }
 
     #[test]
@@ -88,7 +88,7 @@ mod tests {
         let err = "Missing scope permissions on the request. API requires one of 'Mail.Send'. Scopes on the request 'User.Read'";
         let hint = scope_hint(err).unwrap();
         assert!(hint.contains("Mail.Send"));
-        assert!(hint.contains("mws auth login --scope Mail.Send"));
+        assert!(hint.contains("mws-cli auth login --scope Mail.Send"));
         // Single-scope case shouldn't include the "admin-consent" footer
         assert!(!hint.contains("admin-consent"));
     }

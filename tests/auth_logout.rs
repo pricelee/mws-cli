@@ -23,7 +23,7 @@ async fn idp_with_mocks() -> MockServer {
 }
 
 fn login(tmp: &std::path::Path, idp: &MockServer) {
-    Command::cargo_bin("mws").unwrap()
+    Command::cargo_bin("mws-cli").unwrap()
         .args([
             "--config-dir", tmp.to_str().unwrap(),
             "auth", "login", "--device",
@@ -43,7 +43,7 @@ async fn logout_removes_account_file() {
     let accounts_dir = tmp.path().join("accounts");
     assert!(accounts_dir.join("default.bin").exists(), "login should write default.bin");
 
-    Command::cargo_bin("mws").unwrap()
+    Command::cargo_bin("mws-cli").unwrap()
         .args(["--config-dir", tmp.path().to_str().unwrap(), "auth", "logout"])
         .assert()
         .success()
@@ -58,7 +58,7 @@ async fn logout_all_clears_directory() {
     let tmp = tempfile::tempdir().unwrap();
     login(tmp.path(), &idp);
 
-    Command::cargo_bin("mws").unwrap()
+    Command::cargo_bin("mws-cli").unwrap()
         .args([
             "--account", "work",
             "--config-dir", tmp.path().to_str().unwrap(),
@@ -73,7 +73,7 @@ async fn logout_all_clears_directory() {
     assert!(accounts_dir.join("default.bin").exists());
     assert!(accounts_dir.join("work.bin").exists());
 
-    Command::cargo_bin("mws").unwrap()
+    Command::cargo_bin("mws-cli").unwrap()
         .args(["--config-dir", tmp.path().to_str().unwrap(), "auth", "logout", "--all"])
         .assert()
         .success();

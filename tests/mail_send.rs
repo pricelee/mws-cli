@@ -28,7 +28,7 @@ async fn mail_send_inline_no_attachments() {
         .mount(&graph).await;
 
     let tmp = tempfile::tempdir().unwrap();
-    Command::cargo_bin("mws").unwrap()
+    Command::cargo_bin("mws-cli").unwrap()
         .args([
             "--config-dir", tmp.path().to_str().unwrap(),
             "auth", "login", "--device",
@@ -37,7 +37,7 @@ async fn mail_send_inline_no_attachments() {
         ])
         .assert().success();
 
-    Command::cargo_bin("mws").unwrap()
+    Command::cargo_bin("mws-cli").unwrap()
         .args([
             "--config-dir", tmp.path().to_str().unwrap(),
             "--graph-base", &graph.uri(),
@@ -78,7 +78,7 @@ async fn mail_send_inline_small_attachment() {
     let attach = tmp.path().join("hello.txt");
     std::fs::write(&attach, b"small attachment payload").unwrap();
 
-    Command::cargo_bin("mws").unwrap()
+    Command::cargo_bin("mws-cli").unwrap()
         .args([
             "--config-dir", tmp.path().to_str().unwrap(),
             "auth", "login", "--device",
@@ -87,7 +87,7 @@ async fn mail_send_inline_small_attachment() {
         ])
         .assert().success();
 
-    Command::cargo_bin("mws").unwrap()
+    Command::cargo_bin("mws-cli").unwrap()
         .args([
             "--config-dir", tmp.path().to_str().unwrap(),
             "--graph-base", &graph.uri(),

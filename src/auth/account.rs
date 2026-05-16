@@ -6,14 +6,14 @@ use super::token::RedactedString;
 pub const DEFAULT_CLIENT_ID: &str = "14d82eec-204b-4c2f-b7e8-296a70dab67e";
 pub const DEFAULT_TENANT: &str = "common";
 
-/// Scopes requested by `mws auth login` by default. Covers the personal-
+/// Scopes requested by `mws-cli auth login` by default. Covers the personal-
 /// productivity surface of Microsoft Graph that a user owns themselves:
 /// mail, calendar, contacts, OneDrive, OneNote, To Do, Teams chat/presence.
 ///
 /// **No `*.All` admin-consent scopes here.** Including admin-only scopes
 /// would either silently fail or block all non-admin users at sign-in
 /// ("needs admin approval"). Power users / admins who need them widen with
-/// `mws auth login --scope Sites.Read.All --scope Directory.Read.All ...`.
+/// `mws-cli auth login --scope Sites.Read.All --scope Directory.Read.All ...`.
 ///
 /// Adding new sugar commands? Add their delegated user-data scopes here so
 /// the typical user gets a single consent prompt instead of per-command

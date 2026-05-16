@@ -1,4 +1,4 @@
-# mws — Microsoft Workspace CLI
+# mws-cli — Microsoft Workspace CLI
 
 One CLI for Microsoft 365 and Entra ID, built on Microsoft Graph. The Microsoft-side counterpart to [googleworkspace/cli](https://github.com/googleworkspace/cli).
 
@@ -6,16 +6,16 @@ One CLI for Microsoft 365 and Entra ID, built on Microsoft Graph. The Microsoft-
 
 Early development. M1 + M2a ships:
 
-- `mws auth login` / `auth list` / `auth logout` — device-code (default for headless) or auth-code+PKCE (default for desktops)
-- `mws whoami` — print the signed-in user via Graph `/me`
-- `mws raw <METHOD> <path>` — escape hatch for any Graph endpoint; `--all` follows `@odata.nextLink`
-- `mws mail send --to ... --subject ... --body ... [--attachment ...]` — small attachments go inline; large ones use upload sessions
-- `mws drive cp <local> mws:/<remote>` — local→remote, single PUT for <4 MiB, upload session for larger
-- `mws teams list` / `teams channels --team <id>` / `teams chats` — collection reads
-- `mws teams post --team <id> --channel <id> --message <text> [--html]` — channel post (supports `--dry-run`)
-- `mws teams chat post --chat <id> --message <text> [--html]` — chat post (supports `--dry-run`)
-- `mws teams presence` — your Microsoft Teams presence
-- `mws describe [<command>|scopes]` — machine-readable command/scope catalog (for agents)
+- `mws-cli auth login` / `auth list` / `auth logout` — device-code (default for headless) or auth-code+PKCE (default for desktops)
+- `mws-cli whoami` — print the signed-in user via Graph `/me`
+- `mws-cli raw <METHOD> <path>` — escape hatch for any Graph endpoint; `--all` follows `@odata.nextLink`
+- `mws-cli mail send --to ... --subject ... --body ... [--attachment ...]` — small attachments go inline; large ones use upload sessions
+- `mws-cli drive cp <local> mws:/<remote>` — local→remote, single PUT for <4 MiB, upload session for larger
+- `mws-cli teams list` / `teams channels --team <id>` / `teams chats` — collection reads
+- `mws-cli teams post --team <id> --channel <id> --message <text> [--html]` — channel post (supports `--dry-run`)
+- `mws-cli teams chat post --chat <id> --message <text> [--html]` — chat post (supports `--dry-run`)
+- `mws-cli teams presence` — your Microsoft Teams presence
+- `mws-cli describe [<command>|scopes]` — machine-readable command/scope catalog (for agents)
 - AES-256-GCM at-rest token storage with the OS keyring
 - 429/503 retry honoring `Retry-After`
 - Platform-conditional keyring backends (Windows / macOS / Linux)
@@ -23,17 +23,17 @@ Early development. M1 + M2a ships:
 ## Quickstart
 
 ```sh
-cargo install --path crates/mws-cli
-mws auth login            # opens a browser (or use --device for headless)
-mws whoami
-mws --output json whoami | jq .userPrincipalName
-mws teams list
-mws teams post --team <TEAM-ID> --channel <CHANNEL-ID> --message "hello from mws"
+cargo install --path .
+mws-cli auth login            # opens a browser (or use --device for headless)
+mws-cli whoami
+mws-cli --output json whoami | jq .userPrincipalName
+mws-cli teams list
+mws-cli teams post --team <TEAM-ID> --channel <CHANNEL-ID> --message "hello from mws-cli"
 ```
 
 ## Scopes
 
-`mws auth login` requests a broad set of **delegated user-data** scopes — everything needed to act on the signed-in user's own mail, calendar, contacts, OneDrive, OneNote, tasks, and Teams chat in one consent screen:
+`mws-cli auth login` requests a broad set of **delegated user-data** scopes — everything needed to act on the signed-in user's own mail, calendar, contacts, OneDrive, OneNote, tasks, and Teams chat in one consent screen:
 
 - OIDC: `openid`, `profile`, `email`, `offline_access`, `User.Read`
 - Mail: `Mail.ReadWrite`, `Mail.Send`, `MailboxSettings.ReadWrite`
@@ -48,26 +48,26 @@ mws teams post --team <TEAM-ID> --channel <CHANNEL-ID> --message "hello from mws
 **Not** included by default: admin-consent (`.All`) scopes like `Sites.Read.All`, `Directory.Read.All`, `User.Read.All`, etc. — including those upfront would block non-admin sign-in. Admins / power users opt in with `--scope`:
 
 ```sh
-mws auth login --scope Sites.Read.All --scope Directory.Read.All
+mws-cli auth login --scope Sites.Read.All --scope Directory.Read.All
 ```
 
-Re-running `mws auth login` with new scopes triggers Microsoft's incremental-consent flow (already-granted scopes aren't re-prompted).
+Re-running `mws-cli auth login` with new scopes triggers Microsoft's incremental-consent flow (already-granted scopes aren't re-prompted).
 
 ## Manual smoke test (real tenant)
 
 1. `cargo build --release`
-2. `target/release/mws auth login`
+2. `target/release/mws-cli auth login`
 3. Complete the flow in your browser (or follow the device-code prompt). Microsoft asks you to consent to Mail.Send and Files.ReadWrite the first time.
-4. `target/release/mws whoami` should print your `displayName`, `userPrincipalName`, and `mail`.
+4. `target/release/mws-cli whoami` should print your `displayName`, `userPrincipalName`, and `mail`.
 
 ### Shell quoting note (Windows cmd vs PowerShell)
 
 URLs with `$` (OData query like `$top`, `$select`) need different quoting:
 
-- **cmd.exe**: use double-quotes — `mws raw GET "/me/messages?$top=3"`
-- **PowerShell**: use single-quotes — `mws raw GET '/me/messages?$top=3'`
+- **cmd.exe**: use double-quotes — `mws-cli raw GET "/me/messages?$top=3"`
+- **PowerShell**: use single-quotes — `mws-cli raw GET '/me/messages?$top=3'`
 
-cmd treats `'` as a literal character, so `mws raw GET '/path?...'` includes the quotes in the URL and the request fails.
+cmd treats `'` as a literal character, so `mws-cli raw GET '/path?...'` includes the quotes in the URL and the request fails.
 
 ## Layout
 

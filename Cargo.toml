@@ -13,7 +13,7 @@ categories = ["command-line-utilities", "authentication"]
 readme = "README.md"
 
 [[bin]]
-name = "mws"
+name = "mws-cli"
 path = "src/main.rs"
 
 [dependencies]

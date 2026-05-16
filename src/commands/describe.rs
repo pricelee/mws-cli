@@ -1,7 +1,7 @@
-//! `mws describe` — machine-readable command/scope catalog for agents.
+//! `mws-cli describe` — machine-readable command/scope catalog for agents.
 //!
 //! Outputs JSON to stdout. The shape is intentionally simple so AI agents
-//! and shell scripts can introspect mws without parsing `--help` text.
+//! and shell scripts can introspect mws-cli without parsing `--help` text.
 
 use serde_json::{json, Value};
 
@@ -19,7 +19,7 @@ pub fn run(args: DescribeArgs) -> anyhow::Result<()> {
 
 fn describe_root() -> Value {
     json!({
-        "binary": "mws",
+        "binary": "mws-cli",
         "version": env!("CARGO_PKG_VERSION"),
         "description": "Microsoft Workspace CLI — one CLI for Microsoft 365",
         "global_flags": [
@@ -36,7 +36,7 @@ fn describe_root() -> Value {
         "safety": {
             "destructive_methods": ["DELETE"],
             "destructive_post_suffixes": ["/delete", "/permanentDelete", "/revokeGrants", "/archive"],
-            "behavior": "TTY users get a y/N prompt before any destructive operation. Non-TTY callers (agents, scripts) must pass --yes explicitly; otherwise mws exits 4 with a hint.",
+            "behavior": "TTY users get a y/N prompt before any destructive operation. Non-TTY callers (agents, scripts) must pass --yes explicitly; otherwise mws-cli exits 4 with a hint.",
             "exit_code_safety_refused": 4,
         },
         "commands": [
@@ -55,7 +55,7 @@ fn describe_root() -> Value {
             {"name": "teams presence", "description": "Show your Teams presence"},
             {"name": "describe", "description": "This command — print a machine-readable command/scope catalog"},
         ],
-        "subcommands_for_detail": "Run `mws describe <command>` for per-command schema; `mws describe scopes` for the scope catalog.",
+        "subcommands_for_detail": "Run `mws-cli describe <command>` for per-command schema; `mws-cli describe scopes` for the scope catalog.",
     })
 }
 
@@ -96,7 +96,7 @@ fn describe_scopes() -> Value {
             "raw POST /chats/.../messages": ["Chat.ReadWrite"],
             "raw POST /teams/.../channels/.../messages": ["ChannelMessage.Send"],
         },
-        "how_to_widen": "Re-run `mws auth login --scope <SCOPE>` (repeatable) to request additional scopes. Microsoft prompts for incremental consent.",
+        "how_to_widen": "Re-run `mws-cli auth login --scope <SCOPE>` (repeatable) to request additional scopes. Microsoft prompts for incremental consent.",
     })
 }
 
@@ -109,8 +109,8 @@ fn describe_command(path: &[String]) -> anyhow::Result<Value> {
             "args": [],
             "scopes_required": ["User.Read"],
             "examples": [
-                {"description": "Default table output", "command": "mws whoami"},
-                {"description": "JSON output", "command": "mws --output json whoami"},
+                {"description": "Default table output", "command": "mws-cli whoami"},
+                {"description": "JSON output", "command": "mws-cli --output json whoami"},
             ],
         }),
         "auth login" => json!({
@@ -121,12 +121,12 @@ fn describe_command(path: &[String]) -> anyhow::Result<Value> {
                 {"name": "code", "type": "bool", "description": "Force auth-code+PKCE flow (graphical)"},
                 {"name": "scope", "type": "list<string>", "repeatable": true, "description": "Additional OAuth scope on top of DEFAULT_SCOPES"},
             ],
-            "scopes_required": "see `mws describe scopes`",
+            "scopes_required": "see `mws-cli describe scopes`",
             "examples": [
-                {"description": "Standard sign-in", "command": "mws auth login"},
-                {"description": "Headless / SSH", "command": "mws auth login --device"},
-                {"description": "Admin-consent scopes", "command": "mws auth login --scope Sites.Read.All --scope Directory.Read.All"},
-                {"description": "Named account", "command": "mws --account work auth login"},
+                {"description": "Standard sign-in", "command": "mws-cli auth login"},
+                {"description": "Headless / SSH", "command": "mws-cli auth login --device"},
+                {"description": "Admin-consent scopes", "command": "mws-cli auth login --scope Sites.Read.All --scope Directory.Read.All"},
+                {"description": "Named account", "command": "mws-cli --account work auth login"},
             ],
         }),
         "auth list" => json!({
@@ -134,8 +134,8 @@ fn describe_command(path: &[String]) -> anyhow::Result<Value> {
             "description": "List cached accounts and token expiry.",
             "args": [],
             "examples": [
-                {"description": "Show all accounts", "command": "mws auth list"},
-                {"description": "JSON for scripting", "command": "mws --output json auth list"},
+                {"description": "Show all accounts", "command": "mws-cli auth list"},
+                {"description": "JSON for scripting", "command": "mws-cli --output json auth list"},
             ],
         }),
         "auth logout" => json!({
@@ -145,8 +145,8 @@ fn describe_command(path: &[String]) -> anyhow::Result<Value> {
                 {"name": "all", "type": "bool", "description": "Remove every cached account, not just the named one"},
             ],
             "examples": [
-                {"description": "Current account", "command": "mws auth logout"},
-                {"description": "Everything", "command": "mws auth logout --all"},
+                {"description": "Current account", "command": "mws-cli auth logout"},
+                {"description": "Everything", "command": "mws-cli auth logout --all"},
             ],
         }),
         "raw" => json!({
@@ -161,13 +161,13 @@ fn describe_command(path: &[String]) -> anyhow::Result<Value> {
                 {"name": "header", "short": "H", "type": "list<string>", "repeatable": true, "description": "key:value, repeatable"},
             ],
             "examples": [
-                {"description": "Get profile", "command": "mws raw GET /me"},
-                {"description": "Top 5 messages", "command": "mws raw GET \"/me/messages?$top=5\""},
-                {"description": "Calendar events in window", "command": "mws raw GET \"/me/calendarView?startDateTime=2026-05-12T00:00:00Z&endDateTime=2026-05-13T00:00:00Z\""},
-                {"description": "OneDrive root", "command": "mws raw GET /me/drive/root/children"},
-                {"description": "List teams", "command": "mws raw GET /me/joinedTeams"},
-                {"description": "Post to channel", "command": "mws raw POST \"/teams/<TEAM>/channels/<CHANNEL>/messages\" --body @msg.json --header \"Content-Type:application/json\""},
-                {"description": "Paginate fully", "command": "mws --all raw GET /me/messages"},
+                {"description": "Get profile", "command": "mws-cli raw GET /me"},
+                {"description": "Top 5 messages", "command": "mws-cli raw GET \"/me/messages?$top=5\""},
+                {"description": "Calendar events in window", "command": "mws-cli raw GET \"/me/calendarView?startDateTime=2026-05-12T00:00:00Z&endDateTime=2026-05-13T00:00:00Z\""},
+                {"description": "OneDrive root", "command": "mws-cli raw GET /me/drive/root/children"},
+                {"description": "List teams", "command": "mws-cli raw GET /me/joinedTeams"},
+                {"description": "Post to channel", "command": "mws-cli raw POST \"/teams/<TEAM>/channels/<CHANNEL>/messages\" --body @msg.json --header \"Content-Type:application/json\""},
+                {"description": "Paginate fully", "command": "mws-cli --all raw GET /me/messages"},
             ],
             "shell_quoting": {
                 "cmd": "Use double-quotes around paths with $: \"/me/messages?$top=5\"",
@@ -188,9 +188,9 @@ fn describe_command(path: &[String]) -> anyhow::Result<Value> {
             ],
             "scopes_required": ["Mail.Send"],
             "examples": [
-                {"description": "Plain text", "command": "mws mail send --to a@x.com --subject hi --body \"hello\""},
-                {"description": "HTML from file", "command": "mws mail send --to a@x.com --subject report --html --body @./report.html"},
-                {"description": "With attachments", "command": "mws mail send --to a@x.com --subject \"the file\" --body see --attachment ./a.pdf --attachment ./b.png"},
+                {"description": "Plain text", "command": "mws-cli mail send --to a@x.com --subject hi --body \"hello\""},
+                {"description": "HTML from file", "command": "mws-cli mail send --to a@x.com --subject report --html --body @./report.html"},
+                {"description": "With attachments", "command": "mws-cli mail send --to a@x.com --subject \"the file\" --body see --attachment ./a.pdf --attachment ./b.png"},
             ],
         }),
         "drive cp" => json!({
@@ -202,8 +202,8 @@ fn describe_command(path: &[String]) -> anyhow::Result<Value> {
             ],
             "scopes_required": ["Files.ReadWrite"],
             "examples": [
-                {"description": "Small file", "command": "mws drive cp .\\notes.txt mws:/Documents/notes.txt"},
-                {"description": "Large file (auto upload-session)", "command": "mws drive cp .\\backup.zip mws:/Backups/backup.zip"},
+                {"description": "Small file", "command": "mws-cli drive cp .\\notes.txt mws:/Documents/notes.txt"},
+                {"description": "Large file (auto upload-session)", "command": "mws-cli drive cp .\\backup.zip mws:/Backups/backup.zip"},
             ],
         }),
         "teams list" => json!({
@@ -212,8 +212,8 @@ fn describe_command(path: &[String]) -> anyhow::Result<Value> {
             "args": [],
             "scopes_required": ["Team.ReadBasic.All"],
             "examples": [
-                {"description": "Table output", "command": "mws teams list"},
-                {"description": "Paginate all teams", "command": "mws --all teams list"},
+                {"description": "Table output", "command": "mws-cli teams list"},
+                {"description": "Paginate all teams", "command": "mws-cli --all teams list"},
             ],
         }),
         "teams channels" => json!({
@@ -222,7 +222,7 @@ fn describe_command(path: &[String]) -> anyhow::Result<Value> {
             "flags": [{"name": "team", "type": "string", "required": true}],
             "scopes_required": ["Channel.ReadBasic.All"],
             "examples": [
-                {"description": "Channels for a team", "command": "mws teams channels --team <TEAM-ID>"},
+                {"description": "Channels for a team", "command": "mws-cli teams channels --team <TEAM-ID>"},
             ],
         }),
         "teams post" => json!({
@@ -237,9 +237,9 @@ fn describe_command(path: &[String]) -> anyhow::Result<Value> {
             ],
             "scopes_required": ["ChannelMessage.Send"],
             "examples": [
-                {"description": "Plain text", "command": "mws teams post --team T --channel C --message \"hi\""},
-                {"description": "HTML from file", "command": "mws teams post --team T --channel C --html --message @./note.html"},
-                {"description": "Dry-run", "command": "mws teams post --team T --channel C --message hi --dry-run"},
+                {"description": "Plain text", "command": "mws-cli teams post --team T --channel C --message \"hi\""},
+                {"description": "HTML from file", "command": "mws-cli teams post --team T --channel C --html --message @./note.html"},
+                {"description": "Dry-run", "command": "mws-cli teams post --team T --channel C --message hi --dry-run"},
             ],
         }),
         "teams chats" => json!({
@@ -248,7 +248,7 @@ fn describe_command(path: &[String]) -> anyhow::Result<Value> {
             "args": [],
             "scopes_required": ["Chat.ReadWrite"],
             "examples": [
-                {"description": "Table output", "command": "mws teams chats"},
+                {"description": "Table output", "command": "mws-cli teams chats"},
             ],
         }),
         "teams chat post" => json!({
@@ -262,7 +262,7 @@ fn describe_command(path: &[String]) -> anyhow::Result<Value> {
             ],
             "scopes_required": ["Chat.ReadWrite"],
             "examples": [
-                {"description": "Send", "command": "mws teams chat post --chat C --message ping"},
+                {"description": "Send", "command": "mws-cli teams chat post --chat C --message ping"},
             ],
         }),
         "teams presence" => json!({
@@ -271,24 +271,24 @@ fn describe_command(path: &[String]) -> anyhow::Result<Value> {
             "args": [],
             "scopes_required": ["Presence.Read"],
             "examples": [
-                {"description": "Default table", "command": "mws teams presence"},
+                {"description": "Default table", "command": "mws-cli teams presence"},
             ],
         }),
         "describe" => json!({
             "name": "describe",
-            "description": "Machine-readable catalog of mws commands and scopes.",
+            "description": "Machine-readable catalog of mws-cli commands and scopes.",
             "positional_args": [
                 {"name": "path", "type": "list<string>", "description": "Command name (space-separated). Omit for top-level. Use `scopes` for scope catalog."},
             ],
             "examples": [
-                {"description": "Top-level command list", "command": "mws describe"},
-                {"description": "raw schema", "command": "mws describe raw"},
-                {"description": "mail send schema", "command": "mws describe mail send"},
-                {"description": "Scope catalog", "command": "mws describe scopes"},
+                {"description": "Top-level command list", "command": "mws-cli describe"},
+                {"description": "raw schema", "command": "mws-cli describe raw"},
+                {"description": "mail send schema", "command": "mws-cli describe mail send"},
+                {"description": "Scope catalog", "command": "mws-cli describe scopes"},
             ],
         }),
         other => anyhow::bail!(
-            "unknown command '{other}'. Run `mws describe` for the command list."
+            "unknown command '{other}'. Run `mws-cli describe` for the command list."
         ),
     };
     Ok(entry)

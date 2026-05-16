@@ -1,4 +1,4 @@
-//! `mws teams list|channels|chats` — collection GETs.
+//! `mws-cli teams list|channels|chats` — collection GETs.
 
 use crate::auth::Endpoints;
 use crate::graph::GraphClient;

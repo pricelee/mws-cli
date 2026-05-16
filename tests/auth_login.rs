@@ -32,7 +32,7 @@ async fn device_code_login_saves_account() {
     // Use --config-dir so the subprocess writes to the tempdir.
     // directories::ProjectDirs ignores APPDATA on Windows (uses SHGetKnownFolderPath),
     // so env var overrides alone do not isolate test state.
-    Command::cargo_bin("mws").unwrap()
+    Command::cargo_bin("mws-cli").unwrap()
         .args(["--config-dir", cfg,
                "auth", "login", "--device",
                "--device-endpoint", &format!("{}/devicecode", server.uri()),

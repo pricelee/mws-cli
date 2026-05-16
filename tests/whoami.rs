@@ -46,7 +46,7 @@ async fn whoami_prints_user_after_login() {
     // the APPDATA env var, so we pass the path explicitly to get proper isolation.
     // The vault service name is derived via a deterministic hash of this path so
     // each tempdir gets its own Windows Credential Manager entry.
-    Command::cargo_bin("mws").unwrap()
+    Command::cargo_bin("mws-cli").unwrap()
         .args(["--config-dir", cfg,
                "auth", "login", "--device",
                "--device-endpoint", &format!("{}/devicecode", idp.uri()),
@@ -55,7 +55,7 @@ async fn whoami_prints_user_after_login() {
         .assert().success();
 
     // 4) Whoami.
-    Command::cargo_bin("mws").unwrap()
+    Command::cargo_bin("mws-cli").unwrap()
         .args(["--config-dir", cfg,
                "--output", "json",
                "--graph-base", &graph.uri(),

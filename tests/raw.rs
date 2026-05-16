@@ -30,7 +30,7 @@ async fn raw_get_me_returns_json() {
 
     let tmp = tempfile::tempdir().unwrap();
 
-    Command::cargo_bin("mws").unwrap()
+    Command::cargo_bin("mws-cli").unwrap()
         .args([
             "--config-dir", tmp.path().to_str().unwrap(),
             "auth", "login", "--device",
@@ -39,7 +39,7 @@ async fn raw_get_me_returns_json() {
         ])
         .assert().success();
 
-    Command::cargo_bin("mws").unwrap()
+    Command::cargo_bin("mws-cli").unwrap()
         .args([
             "--config-dir", tmp.path().to_str().unwrap(),
             "--graph-base", &graph.uri(),

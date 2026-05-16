@@ -1,8 +1,8 @@
-//! Destructive-operation guard for `mws raw`.
+//! Destructive-operation guard for `mws-cli raw`.
 //!
-//! Microsoft Graph endpoints invoked through `mws raw` can be permanently
+//! Microsoft Graph endpoints invoked through `mws-cli raw` can be permanently
 //! destructive (delete a channel, delete a message, revoke a grant). When the
-//! user — or an AI agent driving mws — issues one of these, we want a
+//! user — or an AI agent driving mws-cli — issues one of these, we want a
 //! confirmation step instead of silently dispatching.
 //!
 //! Policy:
@@ -12,7 +12,7 @@
 //!      and a hint to pass `--yes`. No prompt — we have nowhere to read it
 //!      from, and accepting `echo y |` would be a footgun.
 //!
-//! `mws auth logout --all` is destructive but local-only (no Graph call) so
+//! `mws-cli auth logout --all` is destructive but local-only (no Graph call) so
 //! it's intentionally outside this module's scope.
 
 use std::io::{IsTerminal, Write};
@@ -67,7 +67,7 @@ pub fn gate(method: &str, path: &str, yes: bool) -> anyhow::Result<()> {
     } else {
         let msg = format!(
             "destructive operation refused: {method} {path}\n\
-             stdin is not a TTY, so mws cannot prompt for confirmation.\n\
+             stdin is not a TTY, so mws-cli cannot prompt for confirmation.\n\
              Re-run with --yes to acknowledge."
         );
         Err(anyhow::Error::new(SafetyRefused).context(msg))

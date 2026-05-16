@@ -1,4 +1,4 @@
-//! `mws teams post` and `mws teams chat post` — message-posting sugar.
+//! `mws-cli teams post` and `mws-cli teams chat post` — message-posting sugar.
 
 use crate::auth::Endpoints;
 use crate::graph::GraphClient;

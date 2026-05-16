@@ -34,7 +34,7 @@ async fn raw_all_follows_next_link() {
         }))).mount(&graph).await;
 
     let tmp = tempfile::tempdir().unwrap();
-    Command::cargo_bin("mws").unwrap()
+    Command::cargo_bin("mws-cli").unwrap()
         .args([
             "--config-dir", tmp.path().to_str().unwrap(),
             "auth", "login", "--device",
@@ -43,7 +43,7 @@ async fn raw_all_follows_next_link() {
         ])
         .assert().success();
 
-    Command::cargo_bin("mws").unwrap()
+    Command::cargo_bin("mws-cli").unwrap()
         .args([
             "--config-dir", tmp.path().to_str().unwrap(),
             "--graph-base", &graph.uri(),

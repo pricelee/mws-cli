@@ -1,5 +1,5 @@
 #![cfg(feature = "test-helpers")]
-//! Integration coverage for `mws teams ...`. We test:
+//! Integration coverage for `mws-cli teams ...`. We test:
 //!   1. `teams list` against a wiremocked Graph (collection GET path).
 //!   2. `teams post --dry-run` — pure local; asserts the prepared request shape.
 //!   3. `teams post` against wiremock — asserts URL, body JSON, content type.
@@ -11,7 +11,7 @@ use wiremock::matchers::{body_json, header, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 async fn login_into(tmp: &std::path::Path, idp_uri: &str) {
-    Command::cargo_bin("mws").unwrap()
+    Command::cargo_bin("mws-cli").unwrap()
         .args([
             "--config-dir", tmp.to_str().unwrap(),
             "auth", "login", "--device",
@@ -51,7 +51,7 @@ async fn teams_list_returns_joined_teams() {
 
     let tmp = tempfile::tempdir().unwrap();
     login_into(tmp.path(), &idp.uri()).await;
-    Command::cargo_bin("mws").unwrap()
+    Command::cargo_bin("mws-cli").unwrap()
         .args([
             "--config-dir", tmp.path().to_str().unwrap(),
             "--graph-base", &graph.uri(),
@@ -68,7 +68,7 @@ async fn teams_list_returns_joined_teams() {
 async fn teams_post_dry_run_prints_prepared_request() {
     let tmp = tempfile::tempdir().unwrap();
     // No login needed: dry-run never touches the account store.
-    Command::cargo_bin("mws").unwrap()
+    Command::cargo_bin("mws-cli").unwrap()
         .args([
             "--config-dir", tmp.path().to_str().unwrap(),
             "--graph-base", "https://example.test",
@@ -103,7 +103,7 @@ async fn teams_post_sends_message_body() {
 
     let tmp = tempfile::tempdir().unwrap();
     login_into(tmp.path(), &idp.uri()).await;
-    Command::cargo_bin("mws").unwrap()
+    Command::cargo_bin("mws-cli").unwrap()
         .args([
             "--config-dir", tmp.path().to_str().unwrap(),
             "--graph-base", &graph.uri(),
@@ -119,7 +119,7 @@ async fn teams_post_sends_message_body() {
 #[tokio::test(flavor = "multi_thread")]
 async fn teams_channels_rejects_bad_team_id() {
     let tmp = tempfile::tempdir().unwrap();
-    Command::cargo_bin("mws").unwrap()
+    Command::cargo_bin("mws-cli").unwrap()
         .args([
             "--config-dir", tmp.path().to_str().unwrap(),
             "teams", "channels", "--team", "bad/id",

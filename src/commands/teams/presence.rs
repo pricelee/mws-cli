@@ -1,4 +1,4 @@
-//! `mws teams presence` — GET /me/presence.
+//! `mws-cli teams presence` — GET /me/presence.
 
 use crate::auth::Endpoints;
 use crate::graph::GraphClient;

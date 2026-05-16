@@ -5,7 +5,7 @@ use predicates::str::contains;
 #[test]
 fn raw_delete_refused_without_yes() {
     let tmp = tempfile::tempdir().unwrap();
-    Command::cargo_bin("mws")
+    Command::cargo_bin("mws-cli")
         .unwrap()
         .args([
             "--config-dir",
@@ -24,7 +24,7 @@ fn raw_delete_refused_without_yes() {
 #[test]
 fn raw_post_archive_refused_without_yes() {
     let tmp = tempfile::tempdir().unwrap();
-    Command::cargo_bin("mws")
+    Command::cargo_bin("mws-cli")
         .unwrap()
         .args([
             "--config-dir",
@@ -42,7 +42,7 @@ fn raw_post_archive_refused_without_yes() {
 #[test]
 fn raw_delete_dry_run_succeeds() {
     let tmp = tempfile::tempdir().unwrap();
-    Command::cargo_bin("mws")
+    Command::cargo_bin("mws-cli")
         .unwrap()
         .args([
             "--config-dir",
@@ -64,7 +64,7 @@ fn raw_delete_dry_run_succeeds() {
 #[test]
 fn raw_safe_get_dry_run_is_not_destructive() {
     let tmp = tempfile::tempdir().unwrap();
-    Command::cargo_bin("mws")
+    Command::cargo_bin("mws-cli")
         .unwrap()
         .args([
             "--config-dir",

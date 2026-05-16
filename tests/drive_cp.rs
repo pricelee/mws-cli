@@ -31,7 +31,7 @@ async fn cp_small_file_uses_single_put() {
     let local = tmp.path().join("hello.txt");
     std::fs::write(&local, b"small content").unwrap();
 
-    Command::cargo_bin("mws").unwrap()
+    Command::cargo_bin("mws-cli").unwrap()
         .args([
             "--config-dir", tmp.path().to_str().unwrap(),
             "auth", "login", "--device",
@@ -40,7 +40,7 @@ async fn cp_small_file_uses_single_put() {
         ])
         .assert().success();
 
-    Command::cargo_bin("mws").unwrap()
+    Command::cargo_bin("mws-cli").unwrap()
         .args([
             "--config-dir", tmp.path().to_str().unwrap(),
             "--graph-base", &graph.uri(),
@@ -88,7 +88,7 @@ async fn cp_large_file_uses_upload_session() {
     // 5 MiB payload — above the 4 MiB upload-session threshold but below the chunk size.
     std::fs::write(&local, vec![0u8; 5 * 1024 * 1024 + 1]).unwrap();
 
-    Command::cargo_bin("mws").unwrap()
+    Command::cargo_bin("mws-cli").unwrap()
         .args([
             "--config-dir", tmp.path().to_str().unwrap(),
             "auth", "login", "--device",
@@ -97,7 +97,7 @@ async fn cp_large_file_uses_upload_session() {
         ])
         .assert().success();
 
-    Command::cargo_bin("mws").unwrap()
+    Command::cargo_bin("mws-cli").unwrap()
         .args([
             "--config-dir", tmp.path().to_str().unwrap(),
             "--graph-base", &graph.uri(),

@@ -31,16 +31,16 @@ impl CliContext {
                     let svc = format!("mws-test-{}", fnv1a_hex(dir.to_string_lossy().as_bytes()));
                     (dir, svc)
                 } else {
-                    let proj = directories::ProjectDirs::from("com", "mws", "mws")
+                    let proj = directories::ProjectDirs::from("com", "mws-cli", "mws-cli")
                         .ok_or_else(|| anyhow::anyhow!("no config dir"))?;
-                    (proj.config_dir().to_path_buf(), "mws".to_string())
+                    (proj.config_dir().to_path_buf(), "mws-cli".to_string())
                 }
             }
             #[cfg(not(feature = "test-helpers"))]
             {
-                let proj = directories::ProjectDirs::from("com", "mws", "mws")
+                let proj = directories::ProjectDirs::from("com", "mws-cli", "mws-cli")
                     .ok_or_else(|| anyhow::anyhow!("no config dir"))?;
-                (proj.config_dir().to_path_buf(), "mws".to_string())
+                (proj.config_dir().to_path_buf(), "mws-cli".to_string())
             }
         };
         std::fs::create_dir_all(&config_dir)?;

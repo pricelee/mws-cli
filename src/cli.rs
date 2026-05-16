@@ -5,29 +5,29 @@ Microsoft Workspace CLI — one CLI for Microsoft 365, built on the
 Microsoft Graph REST API. The Microsoft-side counterpart to
 googleworkspace/cli.
 
-For unsupported endpoints, fall through to `mws raw` to call any Graph
-URL directly. Run `mws describe` for a machine-readable schema of every
+For unsupported endpoints, fall through to `mws-cli raw` to call any Graph
+URL directly. Run `mws-cli describe` for a machine-readable schema of every
 command (useful for AI agents and scripts).";
 
 const ROOT_AFTER_HELP: &str = "\
 COMMON WORKFLOWS:
   # Sign in (broad scopes for personal Graph data — one consent screen)
-  mws auth login
+  mws-cli auth login
 
   # Who am I
-  mws whoami
+  mws-cli whoami
 
   # List inbox messages
-  mws raw GET \"/me/messages?$top=5\"
+  mws-cli raw GET \"/me/messages?$top=5\"
 
   # Send a mail
-  mws mail send --to a@b.com --subject hi --body \"test\"
+  mws-cli mail send --to a@b.com --subject hi --body \"test\"
 
   # Upload a file to OneDrive
-  mws drive cp .\\file.txt mws:/Documents/file.txt
+  mws-cli drive cp .\\file.txt mws:/Documents/file.txt
 
   # Send a Teams channel message via raw
-  mws raw POST \"/teams/<TEAM>/channels/<CHANNEL>/messages\" --body @msg.json --header \"Content-Type:application/json\"
+  mws-cli raw POST \"/teams/<TEAM>/channels/<CHANNEL>/messages\" --body @msg.json --header \"Content-Type:application/json\"
 
 SHELL QUOTING:
   Paths with $ (OData $top, $select, $filter) need correct quoting:
@@ -36,7 +36,7 @@ SHELL QUOTING:
 
 #[derive(Debug, Parser)]
 #[command(
-    name = "mws",
+    name = "mws-cli",
     version,
     about = "Microsoft Workspace CLI — one CLI for Microsoft 365",
     long_about = ROOT_LONG_ABOUT,
@@ -66,12 +66,12 @@ pub struct Cli {
     #[arg(long, short = 'v', global = true)]
     pub verbose: bool,
     /// Print the prepared HTTP request as JSON instead of sending it.
-    /// Useful for inspecting what `mws raw` (or future commands) would do.
+    /// Useful for inspecting what `mws-cli raw` (or future commands) would do.
     #[arg(long, global = true)]
     pub dry_run: bool,
     /// Skip the destructive-operation confirmation prompt. Required when
     /// running non-interactively (no TTY) for any DELETE or other destructive
-    /// Graph call via `mws raw`.
+    /// Graph call via `mws-cli raw`.
     #[arg(long, short = 'y', global = true)]
     pub yes: bool,
     /// Override the Graph base URL (hidden; for tests).
@@ -138,13 +138,13 @@ Required scope: Files.ReadWrite (already in DEFAULT_SCOPES).";
 const DRIVE_CP_AFTER_HELP: &str = "\
 EXAMPLES:
   # Upload a small file
-  mws drive cp .\\notes.txt mws:/Documents/notes.txt
+  mws-cli drive cp .\\notes.txt mws:/Documents/notes.txt
 
   # Upload a large file (auto upload-session)
-  mws drive cp .\\backup.zip mws:/Backups/backup-2026-05-12.zip
+  mws-cli drive cp .\\backup.zip mws:/Backups/backup-2026-05-12.zip
 
   # Upload preserving folder structure
-  mws drive cp .\\report.pdf mws:/Reports/2026/Q2/report.pdf";
+  mws-cli drive cp .\\report.pdf mws:/Reports/2026/Q2/report.pdf";
 
 #[derive(Debug, clap::Args)]
 #[command(long_about = DRIVE_CP_LONG_ABOUT, after_help = DRIVE_CP_AFTER_HELP)]
@@ -180,19 +180,19 @@ Required scope: Mail.Send (already in DEFAULT_SCOPES).";
 const MAIL_SEND_AFTER_HELP: &str = "\
 EXAMPLES:
   # Plain text
-  mws mail send --to alice@example.com --subject hi --body \"hello\"
+  mws-cli mail send --to alice@example.com --subject hi --body \"hello\"
 
   # HTML body (auto-detected when it starts with <, or force --html)
-  mws mail send --to alice@example.com --subject report --html --body @./report.html
+  mws-cli mail send --to alice@example.com --subject report --html --body @./report.html
 
   # Multiple recipients + CC
-  mws mail send --to a@x.com --to b@x.com --cc team@x.com --subject \"FYI\" --body @./note.txt
+  mws-cli mail send --to a@x.com --to b@x.com --cc team@x.com --subject \"FYI\" --body @./note.txt
 
   # Body from stdin (handy in pipes)
-  echo \"meeting at 3\" | mws mail send --to a@x.com --subject reminder --body -
+  echo \"meeting at 3\" | mws-cli mail send --to a@x.com --subject reminder --body -
 
   # With attachments
-  mws mail send --to a@x.com --subject \"the file\" --body \"see attached\" \\
+  mws-cli mail send --to a@x.com --subject \"the file\" --body \"see attached\" \\
     --attachment ./report.pdf --attachment ./chart.png";
 
 #[derive(Debug, clap::Args)]
@@ -233,41 +233,41 @@ stream through as-is.";
 const RAW_AFTER_HELP: &str = "\
 EXAMPLES:
   # Your profile (uses User.Read; in DEFAULT_SCOPES)
-  mws raw GET /me
+  mws-cli raw GET /me
 
   # Top 5 inbox messages (uses Mail.ReadWrite)
-  mws raw GET \"/me/messages?$top=5\"
+  mws-cli raw GET \"/me/messages?$top=5\"
 
   # Single message by id (--select narrows fields)
-  mws raw GET \"/me/messages/<ID>?$select=subject,from\"
+  mws-cli raw GET \"/me/messages/<ID>?$select=subject,from\"
 
   # Calendar events in a window
-  mws raw GET \"/me/calendarView?startDateTime=2026-05-12T00:00:00Z&endDateTime=2026-05-13T00:00:00Z\"
+  mws-cli raw GET \"/me/calendarView?startDateTime=2026-05-12T00:00:00Z&endDateTime=2026-05-13T00:00:00Z\"
 
   # OneDrive root listing
-  mws raw GET /me/drive/root/children
+  mws-cli raw GET /me/drive/root/children
 
-  # Send a mail (use `mws mail send` for ergonomics)
-  mws raw POST /me/sendMail --body @msg.json --header \"Content-Type:application/json\"
+  # Send a mail (use `mws-cli mail send` for ergonomics)
+  mws-cli raw POST /me/sendMail --body @msg.json --header \"Content-Type:application/json\"
 
   # Teams the user is a member of
-  mws raw GET /me/joinedTeams
+  mws-cli raw GET /me/joinedTeams
 
   # List channels in a team
-  mws raw GET \"/teams/<TEAM-ID>/channels\"
+  mws-cli raw GET \"/teams/<TEAM-ID>/channels\"
 
   # Post to a Teams channel
-  mws raw POST \"/teams/<TEAM-ID>/channels/<CHANNEL-ID>/messages\" --body @msg.json --header \"Content-Type:application/json\"
+  mws-cli raw POST \"/teams/<TEAM-ID>/channels/<CHANNEL-ID>/messages\" --body @msg.json --header \"Content-Type:application/json\"
 
   # Read your chats and send a 1:1 message
-  mws raw GET /me/chats
-  mws raw POST \"/chats/<CHAT-ID>/messages\" --body @msg.json --header \"Content-Type:application/json\"
+  mws-cli raw GET /me/chats
+  mws-cli raw POST \"/chats/<CHAT-ID>/messages\" --body @msg.json --header \"Content-Type:application/json\"
 
   # Paginate through a large collection (global --all flag)
-  mws --all raw GET /me/messages
+  mws-cli --all raw GET /me/messages
 
   # Beta endpoints (global --beta flag)
-  mws --beta raw GET /me/insights/recent
+  mws-cli --beta raw GET /me/insights/recent
 
 BODY:
   --body \"literal JSON\"   pass directly
@@ -305,28 +305,28 @@ Required scopes (already in DEFAULT_SCOPES):
 const TEAMS_AFTER_HELP: &str = "\
 EXAMPLES:
   # List teams you're a member of
-  mws teams list
+  mws-cli teams list
 
   # List channels in a team
-  mws teams channels --team <TEAM-ID>
+  mws-cli teams channels --team <TEAM-ID>
 
   # Post to a channel (plain text)
-  mws teams post --team <TEAM-ID> --channel <CHANNEL-ID> --message \"hello\"
+  mws-cli teams post --team <TEAM-ID> --channel <CHANNEL-ID> --message \"hello\"
 
   # Post HTML (from a file)
-  mws teams post --team <T> --channel <C> --html --message @./note.html
+  mws-cli teams post --team <T> --channel <C> --html --message @./note.html
 
   # List your chats
-  mws teams chats
+  mws-cli teams chats
 
   # Post to a chat
-  mws teams chat post --chat <CHAT-ID> --message \"ping\"
+  mws-cli teams chat post --chat <CHAT-ID> --message \"ping\"
 
   # Your presence
-  mws teams presence
+  mws-cli teams presence
 
   # Dry-run any post (prints prepared request, doesn't send)
-  mws teams post --team T --channel C --message hi --dry-run";
+  mws-cli teams post --team T --channel C --message hi --dry-run";
 
 #[derive(Debug, clap::Args)]
 #[command(long_about = TEAMS_LONG_ABOUT, after_help = TEAMS_AFTER_HELP)]
@@ -426,7 +426,7 @@ const LOGIN_LONG_ABOUT: &str = "\
 Sign in to Microsoft 365 and cache the resulting tokens locally,
 AES-256-GCM-encrypted with a key in the OS keyring.
 
-By default mws chooses auth-code + PKCE (opens your browser) on a
+By default mws-cli chooses auth-code + PKCE (opens your browser) on a
 graphical desktop and device-code (manual code entry) on headless
 systems. Force either with --device or --code.
 
@@ -437,26 +437,26 @@ admin/`.All` scopes or extra Graph features, add --scope.";
 const LOGIN_AFTER_HELP: &str = "\
 EXAMPLES:
   # Standard sign-in (broad delegated scopes)
-  mws auth login
+  mws-cli auth login
 
   # Headless / SSH session
-  mws auth login --device
+  mws-cli auth login --device
 
   # Add admin scope (will prompt for admin consent if not pre-granted)
-  mws auth login --scope Sites.Read.All --scope Directory.Read.All
+  mws-cli auth login --scope Sites.Read.All --scope Directory.Read.All
 
   # Sign in as a named account
-  mws --account work auth login
+  mws-cli --account work auth login
 
   # Specific tenant
-  mws --tenant contoso.onmicrosoft.com auth login
+  mws-cli --tenant contoso.onmicrosoft.com auth login
 
   # See what's cached
-  mws auth list
+  mws-cli auth list
 
   # Sign out
-  mws auth logout            # current account
-  mws auth logout --all      # every cached account";
+  mws-cli auth logout            # current account
+  mws-cli auth logout --all      # every cached account";
 
 #[derive(Debug, clap::Args)]
 #[command(long_about = LOGIN_LONG_ABOUT, after_help = LOGIN_AFTER_HELP)]
