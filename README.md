@@ -30,7 +30,6 @@ mws-cli teams post --team <TEAM-ID> --channel <CHANNEL-ID> --message "hello from
 - [Shell quoting on Windows](#shell-quoting-on-windows)
 - [Building from source](#building-from-source)
 - [Project layout](#project-layout)
-- [Status & roadmap](#status--roadmap)
 - [License](#license)
 
 ## Why
@@ -49,7 +48,40 @@ cargo install mws-cli
 
 Requires Rust 1.86+. The crate is a single binary named `mws-cli`.
 
-> **Not yet on crates.io?** Until the first publish lands, `cargo install --git https://github.com/pricelee/mws-cli` builds it directly from this repo.
+### Windows users — use the MSVC toolchain
+
+`mws-cli` (and most of the Rust ecosystem) targets `x86_64-pc-windows-msvc`. If you installed Rust through `winget install Rustlang.Rust.GNU` or any other GNU-target package, `cargo install mws-cli` will fail with errors like:
+
+```
+error: linker `dlltool.exe` not found
+error: failed to compile `windows-sys`
+```
+
+Fix it once and for all by switching to the `rustup` installer, which manages MSVC properly:
+
+```sh
+# 1. Remove a GNU-only Rust if you have one
+winget uninstall Rustlang.Rust.GNU
+
+# 2. Install the official rustup
+winget install --id Rustlang.Rustup
+
+# 3. Open a NEW shell, then:
+rustup default stable-x86_64-pc-windows-msvc
+
+# 4. Now this works:
+cargo install mws-cli
+```
+
+The first build also needs **Visual Studio Build Tools 2022** with the "Desktop development with C++" workload. `rustup-init` will prompt you to install it automatically if it's missing. Or install it manually:
+
+```sh
+winget install --id Microsoft.VisualStudio.2022.BuildTools --override "--passive --wait --add Microsoft.VisualStudio.Workload.VCTools --add Microsoft.VisualStudio.Component.Windows11SDK.22621"
+```
+
+### macOS / Linux
+
+Standard `rustup` install from <https://rustup.rs> is all you need — no extra toolchain setup.
 
 ## Quickstart
 
@@ -191,21 +223,6 @@ src/
     ├── mail/   drive/   teams/   calendar/
 tests/                         # integration tests (assert_cmd + wiremock)
 ```
-
-## Status & roadmap
-
-Pre-1.0. Milestones shipped:
-
-- **M0** — skeleton, auth login, whoami.
-- **M1** — raw escape hatch, mail send (with attachments), drive cp (with upload sessions), throttling, paging, agent-surface polish.
-- **M2a** — Teams sugar (list, channels, post, chats, chat post, presence).
-- **M2b** — Calendar sugar (events, create, find-times, rsvp, cancel).
-
-Next:
-
-- **M2c** — Users / Groups admin sugar.
-- **M3** — `mws-cli api` dynamic-from-OpenAPI layer; richer `describe`.
-- **M4** — release packaging (Homebrew, Scoop, Winget, npm wrapper).
 
 ## License
 
