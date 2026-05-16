@@ -1,3 +1,4 @@
+pub mod cancel;
 pub mod create;
 pub mod datetime;
 pub mod events;
@@ -13,6 +14,6 @@ pub async fn run(ctx: &CliContext, args: CalendarArgs) -> anyhow::Result<()> {
         CalendarCmd::Create(a) => create::run(ctx, a).await,
         CalendarCmd::FindTimes(a) => find_times::run(ctx, a).await,
         CalendarCmd::Rsvp(a) => rsvp::run(ctx, a).await,
-        CalendarCmd::Cancel(_) => anyhow::bail!("calendar cancel: implemented in Task 5"),
+        CalendarCmd::Cancel(a) => cancel::run(ctx, a).await,
     }
 }
