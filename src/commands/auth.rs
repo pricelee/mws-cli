@@ -16,6 +16,39 @@ pub async fn run(ctx: &CliContext, args: AuthArgs) -> anyhow::Result<()> {
     }
 }
 
+/// Resolve the final scope set:
+///   - Start with DEFAULT_SCOPES (unless `no_default_scopes`).
+///   - Drop anything listed in `exclude`.
+///   - Append `extra` (the `--scope` adds), de-duplicated.
+///   - Bail if the result is empty — Graph rejects empty-scope flows and the
+///     user almost certainly meant to pass something.
+fn compute_scopes(
+    no_default_scopes: bool,
+    exclude: &[String],
+    extra: &[String],
+) -> anyhow::Result<Vec<String>> {
+    let mut scopes: Vec<String> = if no_default_scopes {
+        Vec::new()
+    } else {
+        DEFAULT_SCOPES
+            .iter()
+            .filter(|s| !exclude.iter().any(|x| x == *s))
+            .map(|s| s.to_string())
+            .collect()
+    };
+    for s in extra {
+        if !scopes.iter().any(|existing| existing == s) {
+            scopes.push(s.clone());
+        }
+    }
+    if scopes.is_empty() {
+        anyhow::bail!(
+            "no scopes requested — pass --scope to add scopes, or drop --no-default-scopes"
+        );
+    }
+    Ok(scopes)
+}
+
 fn endpoints_for(ctx: &CliContext, args: &LoginArgs) -> Endpoints {
     let default = Endpoints::for_tenant(&ctx.tenant);
     Endpoints {
@@ -35,12 +68,7 @@ fn endpoints_for(ctx: &CliContext, args: &LoginArgs) -> Endpoints {
 async fn login(ctx: &CliContext, args: LoginArgs) -> anyhow::Result<()> {
     let http = reqwest::Client::new();
     let endpoints = endpoints_for(ctx, &args);
-    let mut scopes: Vec<String> = DEFAULT_SCOPES.iter().map(|s| s.to_string()).collect();
-    for s in &args.scopes {
-        if !scopes.iter().any(|existing| existing == s) {
-            scopes.push(s.clone());
-        }
-    }
+    let scopes = compute_scopes(args.no_default_scopes, &args.exclude_scopes, &args.scopes)?;
     let mut account = Account::new(&ctx.account_name, &ctx.tenant, &ctx.client_id, scopes.clone());
 
     if args.device || !is_graphical_desktop() {
@@ -185,6 +213,72 @@ fn open_browser(url: &str) -> std::io::Result<()> {
 fn build_windows_cmd_arg(url: &str) -> String {
     let escaped = url.replace('"', "\"\"");
     format!(r#"/C start "" "{escaped}""#)
+}
+
+#[cfg(test)]
+mod scope_tests {
+    use super::compute_scopes;
+    use crate::auth::DEFAULT_SCOPES;
+
+    #[test]
+    fn default_when_no_flags() {
+        let s = compute_scopes(false, &[], &[]).unwrap();
+        assert_eq!(s.len(), DEFAULT_SCOPES.len());
+        assert!(s.contains(&"User.Read".to_string()));
+        assert!(s.contains(&"Mail.Send".to_string()));
+    }
+
+    #[test]
+    fn extra_appended_and_deduped() {
+        let s = compute_scopes(
+            false,
+            &[],
+            &["Sites.Read.All".into(), "User.Read".into()],
+        )
+        .unwrap();
+        // User.Read already in defaults → only one copy in the final list.
+        let user_read_count = s.iter().filter(|x| x.as_str() == "User.Read").count();
+        assert_eq!(user_read_count, 1);
+        assert!(s.contains(&"Sites.Read.All".to_string()));
+    }
+
+    #[test]
+    fn exclude_drops_from_defaults() {
+        let s = compute_scopes(false, &["Tasks.ReadWrite".into()], &[]).unwrap();
+        assert!(!s.contains(&"Tasks.ReadWrite".to_string()));
+        // Other defaults survive.
+        assert!(s.contains(&"User.Read".to_string()));
+    }
+
+    #[test]
+    fn no_default_starts_empty_then_adds_extra() {
+        let s = compute_scopes(
+            true,
+            &[],
+            &["openid".into(), "User.Read".into()],
+        )
+        .unwrap();
+        assert_eq!(s, vec!["openid".to_string(), "User.Read".to_string()]);
+    }
+
+    #[test]
+    fn no_default_without_extra_errors() {
+        let err = compute_scopes(true, &[], &[]).unwrap_err();
+        assert!(err.to_string().contains("no scopes requested"));
+    }
+
+    #[test]
+    fn explicit_scope_wins_over_exclude() {
+        // Edge case: user excludes User.Read but also passes --scope User.Read.
+        // Explicit add wins — we don't second-guess.
+        let s = compute_scopes(
+            false,
+            &["User.Read".into()],
+            &["User.Read".into()],
+        )
+        .unwrap();
+        assert!(s.contains(&"User.Read".to_string()));
+    }
 }
 
 #[cfg(test)]

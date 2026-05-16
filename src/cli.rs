@@ -578,7 +578,11 @@ systems. Force either with --device or --code.
 
 DEFAULT_SCOPES already covers the personal-productivity surface
 (mail, calendar, contacts, files, notes, tasks, Teams chat). For
-admin/`.All` scopes or extra Graph features, add --scope.";
+admin/`.All` scopes or extra Graph features, add --scope.
+
+If your tenant blocks specific delegated scopes, use --exclude-scope
+to drop them from the default set, or --no-default-scopes to start from
+empty and request only what you list with --scope.";
 
 const LOGIN_AFTER_HELP: &str = "\
 EXAMPLES:
@@ -590,6 +594,12 @@ EXAMPLES:
 
   # Add admin scope (will prompt for admin consent if not pre-granted)
   mws-cli auth login --scope Sites.Read.All --scope Directory.Read.All
+
+  # Drop scopes your tenant doesn't grant (keep the rest of the defaults)
+  mws-cli auth login --exclude-scope Tasks.ReadWrite --exclude-scope Notes.ReadWrite
+
+  # Replace the default set entirely with an explicit minimum
+  mws-cli auth login --no-default-scopes --scope openid --scope offline_access --scope User.Read
 
   # Sign in as a named account
   mws-cli --account work auth login
@@ -618,6 +628,15 @@ pub struct LoginArgs {
     /// Directory.Read.All (admin directory read), User.Read.All.
     #[arg(long = "scope")]
     pub scopes: Vec<String>,
+    /// Scope to drop from the default set (repeatable). Use when your
+    /// tenant blocks specific delegated scopes. Has no effect when
+    /// combined with --no-default-scopes (defaults are already empty).
+    #[arg(long = "exclude-scope")]
+    pub exclude_scopes: Vec<String>,
+    /// Skip DEFAULT_SCOPES entirely; only the scopes you list with --scope
+    /// are requested. Use for minimum-privilege sign-in.
+    #[arg(long)]
+    pub no_default_scopes: bool,
     /// Override the OAuth token endpoint (hidden; for tests).
     #[arg(long, hide = true)]
     pub token_endpoint: Option<String>,
