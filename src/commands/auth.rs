@@ -5,7 +5,7 @@ use crate::auth::device_code;
 use crate::auth::Endpoints;
 use crate::auth::{Account, DEFAULT_SCOPES};
 
-use crate::cli::{AuthAction, AuthArgs, LoginArgs};
+use crate::cli::{AdminConsentArgs, AuthAction, AuthArgs, LoginArgs};
 use crate::context::CliContext;
 
 pub async fn run(ctx: &CliContext, args: AuthArgs) -> anyhow::Result<()> {
@@ -13,6 +13,7 @@ pub async fn run(ctx: &CliContext, args: AuthArgs) -> anyhow::Result<()> {
         AuthAction::Login(a) => login(ctx, a).await,
         AuthAction::Logout(a) => logout(ctx, a).await,
         AuthAction::List => list(ctx).await,
+        AuthAction::AdminConsent(a) => admin_consent(ctx, a).await,
     }
 }
 
@@ -134,6 +135,57 @@ fn is_graphical_desktop() -> bool {
 #[cfg(test)]
 fn is_graphical_desktop() -> bool {
     false
+}
+
+/// Microsoft's hosted "your consent was recorded" page. Public clients
+/// like the Microsoft Graph CLI app are registered with this redirect, so
+/// the admin's browser lands somewhere meaningful after granting consent.
+const DEFAULT_ADMIN_REDIRECT: &str = "https://login.microsoftonline.com/common/oauth2/nativeclient";
+
+/// Build the admin-consent URL for a given tenant + client + scope set.
+/// Pure function — easy to unit-test.
+pub(crate) fn build_admin_consent_url(
+    tenant: &str,
+    client_id: &str,
+    scopes: &[String],
+    redirect_uri: &str,
+) -> String {
+    use url::Url;
+    let mut url =
+        Url::parse(&format!("https://login.microsoftonline.com/{tenant}/adminconsent"))
+            .expect("valid base url");
+    url.query_pairs_mut()
+        .append_pair("client_id", client_id)
+        .append_pair("redirect_uri", redirect_uri)
+        .append_pair("scope", &scopes.join(" "));
+    url.to_string()
+}
+
+async fn admin_consent(ctx: &CliContext, args: AdminConsentArgs) -> anyhow::Result<()> {
+    let scopes = compute_scopes(args.no_default_scopes, &args.exclude_scopes, &args.scopes)?;
+    let redirect_uri = args.redirect_uri.as_deref().unwrap_or(DEFAULT_ADMIN_REDIRECT);
+    let url = build_admin_consent_url(&ctx.tenant, &ctx.client_id, &scopes, redirect_uri);
+
+    println!("Admin-consent URL for tenant '{}':", ctx.tenant);
+    println!();
+    println!("  {url}");
+    println!();
+    println!("Send this URL to your tenant administrator. When they open it and");
+    println!("click 'Accept', consent is granted for the entire tenant and any");
+    println!("user can then run `mws-cli auth login` without per-user prompts.");
+    if ctx.tenant == "common" || ctx.tenant == "organizations" || ctx.tenant == "consumers" {
+        println!();
+        println!("Note: tenant is '{}'. The admin will land in whichever tenant", ctx.tenant);
+        println!("their browser session is signed in to. Pass --tenant <ID> to be");
+        println!("explicit (recommended for cross-tenant admins).");
+    }
+
+    if !args.print_only && is_graphical_desktop() {
+        println!();
+        println!("Opening URL in your default browser...");
+        let _ = open_browser(&url);
+    }
+    Ok(())
 }
 
 async fn list(ctx: &CliContext) -> anyhow::Result<()> {
@@ -265,6 +317,32 @@ mod scope_tests {
     fn no_default_without_extra_errors() {
         let err = compute_scopes(true, &[], &[]).unwrap_err();
         assert!(err.to_string().contains("no scopes requested"));
+    }
+
+    #[test]
+    fn admin_consent_url_has_required_params() {
+        let url = super::build_admin_consent_url(
+            "contoso.onmicrosoft.com",
+            "14d82eec-204b-4c2f-b7e8-296a70dab67e",
+            &["User.Read".into(), "Sites.Read.All".into()],
+            super::DEFAULT_ADMIN_REDIRECT,
+        );
+        assert!(url.starts_with("https://login.microsoftonline.com/contoso.onmicrosoft.com/adminconsent?"));
+        assert!(url.contains("client_id=14d82eec-204b-4c2f-b7e8-296a70dab67e"));
+        // scope is space-separated, then URL-encoded to %20:
+        assert!(url.contains("scope=User.Read+Sites.Read.All") || url.contains("scope=User.Read%20Sites.Read.All"));
+        assert!(url.contains("redirect_uri="));
+    }
+
+    #[test]
+    fn admin_consent_url_uses_common_when_tenant_unspecified() {
+        let url = super::build_admin_consent_url(
+            "common",
+            "X",
+            &["openid".into()],
+            super::DEFAULT_ADMIN_REDIRECT,
+        );
+        assert!(url.starts_with("https://login.microsoftonline.com/common/adminconsent?"));
     }
 
     #[test]

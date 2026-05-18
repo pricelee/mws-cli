@@ -43,6 +43,7 @@ fn describe_root() -> Value {
             {"name": "auth login", "description": "Sign in (device-code or auth-code+PKCE)"},
             {"name": "auth list", "description": "List cached accounts"},
             {"name": "auth logout", "description": "Sign out (remove cached credentials)"},
+            {"name": "auth admin-consent", "description": "Print/open the tenant admin-consent URL"},
             {"name": "whoami", "description": "Show the signed-in user via Graph /me"},
             {"name": "raw", "description": "Make a raw HTTP request to Microsoft Graph (GET/POST/PATCH/PUT/DELETE)"},
             {"name": "mail send", "description": "Send an email"},
@@ -156,6 +157,23 @@ fn describe_command(path: &[String]) -> anyhow::Result<Value> {
             "examples": [
                 {"description": "Current account", "command": "mws-cli auth logout"},
                 {"description": "Everything", "command": "mws-cli auth logout --all"},
+            ],
+        }),
+        "auth admin-consent" => json!({
+            "name": "auth admin-consent",
+            "description": "Print (and optionally open) a tenant-wide admin-consent URL. Use when mws-cli auth login fails with 'needs admin approval' — send the URL to a tenant administrator; one click grants consent for everyone.",
+            "args": [
+                {"name": "scope", "type": "list<string>", "repeatable": true, "description": "Additional scope to include in the consent URL"},
+                {"name": "exclude-scope", "type": "list<string>", "repeatable": true, "description": "Drop a scope from the default set"},
+                {"name": "no-default-scopes", "type": "bool", "description": "Skip DEFAULT_SCOPES; only --scope adds are in the URL"},
+                {"name": "print-only", "type": "bool", "description": "Print the URL only; do not try to open a browser"},
+            ],
+            "examples": [
+                {"description": "All defaults (most common)", "command": "mws-cli auth admin-consent"},
+                {"description": "Add admin-consent scopes", "command": "mws-cli auth admin-consent --scope Sites.Read.All --scope Directory.Read.All"},
+                {"description": "Minimum-privilege admin grant", "command": "mws-cli auth admin-consent --no-default-scopes --scope Sites.Read.All"},
+                {"description": "Just print (for Slack/email)", "command": "mws-cli auth admin-consent --print-only"},
+                {"description": "Specific tenant", "command": "mws-cli --tenant contoso.onmicrosoft.com auth admin-consent"},
             ],
         }),
         "raw" => json!({

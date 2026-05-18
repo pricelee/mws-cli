@@ -211,6 +211,29 @@ These typically need admin approval — opt in only when you know your tenant al
 | `Mail.Send.Shared` | Send from a shared mailbox |
 | `Calendars.ReadWrite.Shared` | Read/write shared calendars |
 
+### Requesting admin approval
+
+If `mws-cli auth login` fails with `AADSTS65001`, `AADSTS90094`, or "needs admin approval", your tenant requires an administrator to pre-consent on behalf of all users. Generate the URL admin needs to click:
+
+```sh
+# Default: URL covers DEFAULT_SCOPES — admin clicks once, sign-in works for everyone
+mws-cli auth admin-consent
+
+# Add scopes that need admin consent on top of defaults
+mws-cli auth admin-consent --scope Sites.Read.All --scope Directory.Read.All
+
+# Only specific scopes — minimum-privilege admin grant
+mws-cli auth admin-consent --no-default-scopes --scope Sites.Read.All
+
+# Print-only mode (no browser launch) — handy for sending via Slack/email
+mws-cli auth admin-consent --print-only
+
+# Target a specific tenant (recommended over the default 'common')
+mws-cli --tenant contoso.onmicrosoft.com auth admin-consent
+```
+
+The URL points to Microsoft's `/{tenant}/adminconsent` endpoint. When the admin opens it and clicks **Accept**, consent is recorded tenant-wide. After that any user in the tenant can run `mws-cli auth login` without per-user consent prompts.
+
 Full machine-readable catalog: `mws-cli describe scopes`.
 
 ## Agent / scripting surface

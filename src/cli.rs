@@ -559,6 +559,62 @@ pub enum AuthAction {
     Logout(LogoutArgs),
     /// List cached accounts.
     List,
+    /// Print (and optionally open) an admin-consent URL. Send it to your
+    /// tenant administrator; once they approve, normal sign-in works.
+    #[command(name = "admin-consent")]
+    AdminConsent(AdminConsentArgs),
+}
+
+const ADMIN_CONSENT_LONG_ABOUT: &str = "\
+Generate a tenant-wide admin-consent URL for the scopes mws-cli needs.
+
+When `mws-cli auth login` fails with errors like 'AADSTS65001' or
+'needs admin approval', your tenant requires an administrator to
+pre-consent on behalf of all users. This command builds the URL that,
+when opened by an admin, lets them grant consent for the whole tenant
+in one click.
+
+The admin must be signed in to the SAME tenant (or use --tenant to
+target a specific one). Send them the printed URL via Slack/email, or
+let mws-cli open it in your browser (handy if you're the admin).";
+
+const ADMIN_CONSENT_AFTER_HELP: &str = "\
+EXAMPLES:
+  # Generate URL for DEFAULT_SCOPES (most common — admin grants everything)
+  mws-cli auth admin-consent
+
+  # Add admin-consent scopes (admin grants these + defaults)
+  mws-cli auth admin-consent --scope Sites.Read.All --scope Directory.Read.All
+
+  # Only specific scopes — minimum-privilege admin grant
+  mws-cli auth admin-consent --no-default-scopes --scope Sites.Read.All
+
+  # Don't open browser — just print the URL (for Slack/email)
+  mws-cli auth admin-consent --print-only
+
+  # Target a specific tenant (useful when current account is on common)
+  mws-cli --tenant contoso.onmicrosoft.com auth admin-consent";
+
+#[derive(Debug, clap::Args)]
+#[command(long_about = ADMIN_CONSENT_LONG_ABOUT, after_help = ADMIN_CONSENT_AFTER_HELP)]
+pub struct AdminConsentArgs {
+    /// Additional OAuth scope to include in the consent URL (repeatable).
+    #[arg(long = "scope")]
+    pub scopes: Vec<String>,
+    /// Scope to drop from the default set (repeatable).
+    #[arg(long = "exclude-scope")]
+    pub exclude_scopes: Vec<String>,
+    /// Skip DEFAULT_SCOPES; only --scope adds end up in the URL.
+    #[arg(long)]
+    pub no_default_scopes: bool,
+    /// Print the URL only — don't try to open a browser.
+    #[arg(long)]
+    pub print_only: bool,
+    /// Override the redirect_uri sent to Microsoft. Defaults to the
+    /// Microsoft native-client redirect (admin sees a "consent granted"
+    /// page from Microsoft, no listener needed on our side).
+    #[arg(long, hide = true)]
+    pub redirect_uri: Option<String>,
 }
 
 #[derive(Debug, clap::Args)]
