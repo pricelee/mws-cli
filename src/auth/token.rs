@@ -74,3 +74,45 @@ pub struct TokenGrant {
     pub id_token: Option<String>,
     pub expires_in: u64,
 }
+
+/// Extract the `tid` (tenant id) claim from a JWT id_token without verifying
+/// the signature. We only need the value Microsoft already authenticated for
+/// us at token-exchange time — we're not enforcing trust here, just reading.
+pub fn extract_tid(id_token: &str) -> Option<String> {
+    use base64::Engine;
+    let mid = id_token.split('.').nth(1)?;
+    let bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
+        .decode(mid)
+        .ok()?;
+    let claims: serde_json::Value = serde_json::from_slice(&bytes).ok()?;
+    claims.get("tid")?.as_str().map(|s| s.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::extract_tid;
+    use base64::Engine;
+
+    fn jwt_with_tid(tid: &str) -> String {
+        let header = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(b"{\"alg\":\"none\"}");
+        let payload = serde_json::json!({ "tid": tid, "name": "Alice" }).to_string();
+        let payload_b64 = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(payload);
+        format!("{header}.{payload_b64}.signature")
+    }
+
+    #[test]
+    fn extracts_tid_from_well_formed_jwt() {
+        let token = jwt_with_tid("a1b2c3d4-e5f6-7890-abcd-ef1234567890");
+        assert_eq!(
+            extract_tid(&token).as_deref(),
+            Some("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
+        );
+    }
+
+    #[test]
+    fn returns_none_for_garbage() {
+        assert!(extract_tid("not-a-jwt").is_none());
+        assert!(extract_tid("only.one").is_none());
+        assert!(extract_tid("a.b.c").is_none()); // 'b' is invalid base64 / not JSON
+    }
+}

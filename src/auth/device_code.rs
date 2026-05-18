@@ -106,6 +106,11 @@ pub fn apply_grant(account: &mut Account, grant: TokenGrant) {
         account.refresh_token = Some(rt.into());
     }
     if let Some(it) = grant.id_token {
+        // Replace the multi-tenant placeholder with the real tenant id so
+        // downstream commands (admin-consent, refresh) don't need --tenant.
+        if let Some(tid) = super::token::extract_tid(&it) {
+            account.tenant = tid;
+        }
         account.id_token = Some(it.into());
     }
 }

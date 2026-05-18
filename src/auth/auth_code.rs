@@ -173,6 +173,12 @@ pub fn apply_grant(account: &mut super::account::Account, grant: TokenGrant) {
         account.refresh_token = Some(rt.into());
     }
     if let Some(it) = grant.id_token {
+        // Promote the multi-tenant placeholder ("common"/"organizations"/"consumers")
+        // to the concrete tenant id Microsoft authenticated us against, so commands
+        // like `admin-consent` know which tenant to target without re-asking.
+        if let Some(tid) = super::token::extract_tid(&it) {
+            account.tenant = tid;
+        }
         account.id_token = Some(it.into());
     }
 }

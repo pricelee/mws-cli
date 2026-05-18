@@ -234,6 +234,8 @@ mws-cli --tenant contoso.onmicrosoft.com auth admin-consent
 
 The URL points to Microsoft's `/{tenant}/adminconsent` endpoint. When the admin opens it and clicks **Accept**, consent is recorded tenant-wide. After that any user in the tenant can run `mws-cli auth login` without per-user consent prompts.
 
+**Tenant auto-detection:** if you've already signed in once, `mws-cli` captures your real tenant id from the id_token and uses it automatically — you don't need `--tenant`. Pass it only if you want to target a different tenant than you signed in to.
+
 Full machine-readable catalog: `mws-cli describe scopes`.
 
 ## Agent / scripting surface

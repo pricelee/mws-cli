@@ -161,23 +161,54 @@ pub(crate) fn build_admin_consent_url(
     url.to_string()
 }
 
+/// `common` / `organizations` / `consumers` are Microsoft's multi-tenant
+/// placeholders — they tell the IdP "let the user pick a tenant at sign-in",
+/// but they're useless as a target for tenant-wide admin consent (the admin
+/// would have to manually pick the right tenant in their browser).
+fn is_placeholder_tenant(t: &str) -> bool {
+    matches!(t, "common" | "organizations" | "consumers")
+}
+
+/// Resolve the tenant to target for admin-consent:
+/// 1. Honor `--tenant` if it's a concrete tenant (not a placeholder).
+/// 2. Otherwise read the signed-in account's stored tenant — that's the real
+///    GUID Microsoft authenticated against, captured from the id_token at
+///    login time.
+/// 3. Fall back to whatever ctx has (and warn the user later).
+fn resolve_admin_tenant(ctx: &CliContext) -> String {
+    if !is_placeholder_tenant(&ctx.tenant) {
+        return ctx.tenant.clone();
+    }
+    if let Ok(account) = ctx.store.load(&ctx.account_name) {
+        if !is_placeholder_tenant(&account.tenant) {
+            return account.tenant;
+        }
+    }
+    ctx.tenant.clone()
+}
+
 async fn admin_consent(ctx: &CliContext, args: AdminConsentArgs) -> anyhow::Result<()> {
     let scopes = compute_scopes(args.no_default_scopes, &args.exclude_scopes, &args.scopes)?;
     let redirect_uri = args.redirect_uri.as_deref().unwrap_or(DEFAULT_ADMIN_REDIRECT);
-    let url = build_admin_consent_url(&ctx.tenant, &ctx.client_id, &scopes, redirect_uri);
+    let tenant = resolve_admin_tenant(ctx);
+    let url = build_admin_consent_url(&tenant, &ctx.client_id, &scopes, redirect_uri);
 
-    println!("Admin-consent URL for tenant '{}':", ctx.tenant);
+    println!("Admin-consent URL for tenant '{tenant}':");
+    if tenant != ctx.tenant {
+        println!("  (auto-detected from your signed-in account; pass --tenant to override)");
+    }
     println!();
     println!("  {url}");
     println!();
     println!("Send this URL to your tenant administrator. When they open it and");
     println!("click 'Accept', consent is granted for the entire tenant and any");
     println!("user can then run `mws-cli auth login` without per-user prompts.");
-    if ctx.tenant == "common" || ctx.tenant == "organizations" || ctx.tenant == "consumers" {
+    if is_placeholder_tenant(&tenant) {
         println!();
-        println!("Note: tenant is '{}'. The admin will land in whichever tenant", ctx.tenant);
-        println!("their browser session is signed in to. Pass --tenant <ID> to be");
-        println!("explicit (recommended for cross-tenant admins).");
+        println!("Note: tenant is '{tenant}' — a multi-tenant placeholder. The admin");
+        println!("will land in whichever tenant their browser is signed in to. To");
+        println!("target a specific tenant either sign in first (mws-cli auth login)");
+        println!("so the tenant id is captured, or pass --tenant <ID> explicitly.");
     }
 
     if !args.print_only && is_graphical_desktop() {

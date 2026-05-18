@@ -574,9 +574,11 @@ pre-consent on behalf of all users. This command builds the URL that,
 when opened by an admin, lets them grant consent for the whole tenant
 in one click.
 
-The admin must be signed in to the SAME tenant (or use --tenant to
-target a specific one). Send them the printed URL via Slack/email, or
-let mws-cli open it in your browser (handy if you're the admin).";
+mws-cli auto-detects the tenant from your signed-in account (captured
+from the id_token at login time). If you haven't logged in yet — or
+want to target a different tenant — pass --tenant <ID>. Send the
+printed URL to your admin via Slack/email, or let mws-cli open it
+in your browser (handy if you're the admin).";
 
 const ADMIN_CONSENT_AFTER_HELP: &str = "\
 EXAMPLES:
