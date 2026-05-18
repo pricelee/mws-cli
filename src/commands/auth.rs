@@ -151,9 +151,15 @@ pub(crate) fn build_admin_consent_url(
     redirect_uri: &str,
 ) -> String {
     use url::Url;
-    let mut url =
-        Url::parse(&format!("https://login.microsoftonline.com/{tenant}/adminconsent"))
-            .expect("valid base url");
+    // v2 endpoint (`/v2.0/adminconsent`) honors the `scope` query param so the
+    // admin consents only to what we list. The v1 endpoint (`/adminconsent`
+    // without the version) ignores `scope` and falls back to the app's static
+    // permissions, which for Microsoft Graph CLI is a much broader set and
+    // would surface admin-only scopes the user never asked for.
+    let mut url = Url::parse(&format!(
+        "https://login.microsoftonline.com/{tenant}/v2.0/adminconsent"
+    ))
+    .expect("valid base url");
     url.query_pairs_mut()
         .append_pair("client_id", client_id)
         .append_pair("redirect_uri", redirect_uri)
@@ -200,9 +206,14 @@ async fn admin_consent(ctx: &CliContext, args: AdminConsentArgs) -> anyhow::Resu
     println!();
     println!("  {url}");
     println!();
-    println!("Send this URL to your tenant administrator. When they open it and");
+    println!("Send this URL to your tenant administrator. When THEY open it and");
     println!("click 'Accept', consent is granted for the entire tenant and any");
     println!("user can then run `mws-cli auth login` without per-user prompts.");
+    println!();
+    println!("Heads-up: if YOU open this URL (not an admin) you'll see a");
+    println!("'needs admin approval' screen — that's the normal screen for");
+    println!("non-admin users. The URL only shows the admin-consent screen");
+    println!("when opened by someone with tenant-admin role.");
     if is_placeholder_tenant(&tenant) {
         println!();
         println!("Note: tenant is '{tenant}' — a multi-tenant placeholder. The admin");
@@ -358,7 +369,7 @@ mod scope_tests {
             &["User.Read".into(), "Sites.Read.All".into()],
             super::DEFAULT_ADMIN_REDIRECT,
         );
-        assert!(url.starts_with("https://login.microsoftonline.com/contoso.onmicrosoft.com/adminconsent?"));
+        assert!(url.starts_with("https://login.microsoftonline.com/contoso.onmicrosoft.com/v2.0/adminconsent?"));
         assert!(url.contains("client_id=14d82eec-204b-4c2f-b7e8-296a70dab67e"));
         // scope is space-separated, then URL-encoded to %20:
         assert!(url.contains("scope=User.Read+Sites.Read.All") || url.contains("scope=User.Read%20Sites.Read.All"));
@@ -373,7 +384,7 @@ mod scope_tests {
             &["openid".into()],
             super::DEFAULT_ADMIN_REDIRECT,
         );
-        assert!(url.starts_with("https://login.microsoftonline.com/common/adminconsent?"));
+        assert!(url.starts_with("https://login.microsoftonline.com/common/v2.0/adminconsent?"));
     }
 
     #[test]
