@@ -177,20 +177,32 @@ fn is_placeholder_tenant(t: &str) -> bool {
 
 /// Resolve the tenant to target for admin-consent:
 /// 1. Honor `--tenant` if it's a concrete tenant (not a placeholder).
-/// 2. Otherwise read the signed-in account's stored tenant — that's the real
-///    GUID Microsoft authenticated against, captured from the id_token at
-///    login time.
-/// 3. Fall back to whatever ctx has (and warn the user later).
+/// 2. Otherwise read the signed-in account's stored tenant.
+/// 3. If the account exists but its tenant is still a placeholder (e.g. it was
+///    created before 0.0.4 captured `tid` at login), try to extract `tid` from
+///    the cached id_token now and persist the promotion.
+/// 4. Fall back to "organizations" — Microsoft explicitly REJECTS "common" and
+///    "consumers" at /v2.0/adminconsent with AADSTS9002328. "organizations" is
+///    the only generic value Microsoft accepts there.
 fn resolve_admin_tenant(ctx: &CliContext) -> String {
     if !is_placeholder_tenant(&ctx.tenant) {
         return ctx.tenant.clone();
     }
-    if let Ok(account) = ctx.store.load(&ctx.account_name) {
+    if let Ok(mut account) = ctx.store.load(&ctx.account_name) {
         if !is_placeholder_tenant(&account.tenant) {
             return account.tenant;
         }
+        // Lazy promotion for pre-0.0.4 accounts: id_token is cached but the
+        // tenant field still shows "common". Extract tid now and save it.
+        if let Some(it) = account.id_token.as_deref() {
+            if let Some(tid) = crate::auth::token::extract_tid(it) {
+                account.tenant = tid.clone();
+                let _ = ctx.store.save(&account);
+                return tid;
+            }
+        }
     }
-    ctx.tenant.clone()
+    "organizations".to_string()
 }
 
 async fn admin_consent(ctx: &CliContext, args: AdminConsentArgs) -> anyhow::Result<()> {
@@ -214,12 +226,15 @@ async fn admin_consent(ctx: &CliContext, args: AdminConsentArgs) -> anyhow::Resu
     println!("'needs admin approval' screen — that's the normal screen for");
     println!("non-admin users. The URL only shows the admin-consent screen");
     println!("when opened by someone with tenant-admin role.");
-    if is_placeholder_tenant(&tenant) {
+    if tenant == "organizations" {
         println!();
-        println!("Note: tenant is '{tenant}' — a multi-tenant placeholder. The admin");
-        println!("will land in whichever tenant their browser is signed in to. To");
-        println!("target a specific tenant either sign in first (mws-cli auth login)");
-        println!("so the tenant id is captured, or pass --tenant <ID> explicitly.");
+        println!("Note: no signed-in account had a concrete tenant id, so the URL");
+        println!("uses '/organizations' — Microsoft's generic placeholder ('/common'");
+        println!("and '/consumers' are explicitly rejected by /adminconsent with");
+        println!("AADSTS9002328). The admin will land in whichever tenant their");
+        println!("browser session is signed in to. For a specific tenant either");
+        println!("run `mws-cli auth login` first (mws-cli will capture your tenant");
+        println!("id automatically) or pass --tenant <ID> explicitly.");
     }
 
     if !args.print_only && is_graphical_desktop() {
@@ -377,14 +392,26 @@ mod scope_tests {
     }
 
     #[test]
-    fn admin_consent_url_uses_common_when_tenant_unspecified() {
+    fn admin_consent_url_uses_whatever_tenant_we_pass() {
+        // The URL builder is dumb on purpose — caller is responsible for
+        // passing a Microsoft-accepted tenant value. The placeholder-promotion
+        // happens up in resolve_admin_tenant().
         let url = super::build_admin_consent_url(
-            "common",
+            "organizations",
             "X",
             &["openid".into()],
             super::DEFAULT_ADMIN_REDIRECT,
         );
-        assert!(url.starts_with("https://login.microsoftonline.com/common/v2.0/adminconsent?"));
+        assert!(url.starts_with("https://login.microsoftonline.com/organizations/v2.0/adminconsent?"));
+    }
+
+    #[test]
+    fn is_placeholder_recognizes_microsoft_aliases() {
+        assert!(super::is_placeholder_tenant("common"));
+        assert!(super::is_placeholder_tenant("organizations"));
+        assert!(super::is_placeholder_tenant("consumers"));
+        assert!(!super::is_placeholder_tenant("contoso.onmicrosoft.com"));
+        assert!(!super::is_placeholder_tenant("a1b2c3d4-e5f6-7890-abcd-ef1234567890"));
     }
 
     #[test]
