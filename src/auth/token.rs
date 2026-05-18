@@ -75,38 +75,60 @@ pub struct TokenGrant {
     pub expires_in: u64,
 }
 
-/// Extract the `tid` (tenant id) claim from a JWT id_token without verifying
-/// the signature. We only need the value Microsoft already authenticated for
-/// us at token-exchange time — we're not enforcing trust here, just reading.
-pub fn extract_tid(id_token: &str) -> Option<String> {
+/// Parse a JWT id_token's claims payload (the middle segment), without
+/// verifying the signature. We only read values Microsoft already
+/// authenticated for us at token-exchange time.
+pub fn extract_claims(id_token: &str) -> Option<serde_json::Value> {
     use base64::Engine;
     let mid = id_token.split('.').nth(1)?;
     let bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
         .decode(mid)
         .ok()?;
-    let claims: serde_json::Value = serde_json::from_slice(&bytes).ok()?;
-    claims.get("tid")?.as_str().map(|s| s.to_string())
+    serde_json::from_slice(&bytes).ok()
+}
+
+/// Extract the `tid` (tenant id) claim from a JWT id_token.
+pub fn extract_tid(id_token: &str) -> Option<String> {
+    extract_claims(id_token)?
+        .get("tid")?
+        .as_str()
+        .map(|s| s.to_string())
 }
 
 #[cfg(test)]
 mod tests {
-    use super::extract_tid;
+    use super::{extract_claims, extract_tid};
     use base64::Engine;
 
-    fn jwt_with_tid(tid: &str) -> String {
+    fn jwt_with(claims: serde_json::Value) -> String {
         let header = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(b"{\"alg\":\"none\"}");
-        let payload = serde_json::json!({ "tid": tid, "name": "Alice" }).to_string();
-        let payload_b64 = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(payload);
+        let payload_b64 =
+            base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(claims.to_string());
         format!("{header}.{payload_b64}.signature")
     }
 
     #[test]
     fn extracts_tid_from_well_formed_jwt() {
-        let token = jwt_with_tid("a1b2c3d4-e5f6-7890-abcd-ef1234567890");
+        let token = jwt_with(serde_json::json!({
+            "tid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "name": "Alice"
+        }));
         assert_eq!(
             extract_tid(&token).as_deref(),
             Some("a1b2c3d4-e5f6-7890-abcd-ef1234567890")
         );
+    }
+
+    #[test]
+    fn extracts_arbitrary_claims() {
+        let token = jwt_with(serde_json::json!({
+            "name": "Lee Junho",
+            "preferred_username": "pricelee@contoso.com",
+            "tid": "T"
+        }));
+        let claims = extract_claims(&token).unwrap();
+        assert_eq!(claims["name"], "Lee Junho");
+        assert_eq!(claims["preferred_username"], "pricelee@contoso.com");
     }
 
     #[test]

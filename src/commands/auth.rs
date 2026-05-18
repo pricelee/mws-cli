@@ -205,19 +205,53 @@ fn resolve_admin_tenant(ctx: &CliContext) -> String {
     "organizations".to_string()
 }
 
+/// Identity of the currently signed-in user, derived from cached id_token
+/// claims. Returns a display string like `"Lee Junho <pricelee@contoso.com>"`,
+/// or None if no useful identity is cached.
+fn current_requester_label(ctx: &CliContext) -> Option<String> {
+    let account = ctx.store.load(&ctx.account_name).ok()?;
+    let id_token = account.id_token.as_deref()?;
+    let claims = crate::auth::token::extract_claims(id_token)?;
+    let name = claims.get("name").and_then(|v| v.as_str());
+    let upn = claims
+        .get("preferred_username")
+        .or_else(|| claims.get("upn"))
+        .or_else(|| claims.get("email"))
+        .and_then(|v| v.as_str());
+    match (name, upn) {
+        (Some(n), Some(u)) => Some(format!("{n} <{u}>")),
+        (Some(n), None) => Some(n.to_string()),
+        (None, Some(u)) => Some(u.to_string()),
+        (None, None) => None,
+    }
+}
+
 async fn admin_consent(ctx: &CliContext, args: AdminConsentArgs) -> anyhow::Result<()> {
     let scopes = compute_scopes(args.no_default_scopes, &args.exclude_scopes, &args.scopes)?;
     let redirect_uri = args.redirect_uri.as_deref().unwrap_or(DEFAULT_ADMIN_REDIRECT);
     let tenant = resolve_admin_tenant(ctx);
     let url = build_admin_consent_url(&tenant, &ctx.client_id, &scopes, redirect_uri);
+    let requester = current_requester_label(ctx);
 
     println!("Admin-consent URL for tenant '{tenant}':");
     if tenant != ctx.tenant {
         println!("  (auto-detected from your signed-in account; pass --tenant to override)");
     }
+    if let Some(r) = &requester {
+        println!("Requesting on behalf of: {r}");
+    }
     println!();
     println!("  {url}");
     println!();
+    if let Some(r) = &requester {
+        println!("Suggested message to your admin (copy/paste):");
+        println!();
+        println!("  Hi, I need admin consent to use mws-cli (a Microsoft 365 CLI).");
+        println!("  Please click the URL above and accept — it grants consent for");
+        println!("  the whole tenant in one step.");
+        println!("  — {r}");
+        println!();
+    }
     println!("Send this URL to your tenant administrator. When THEY open it and");
     println!("click 'Accept', consent is granted for the entire tenant and any");
     println!("user can then run `mws-cli auth login` without per-user prompts.");
