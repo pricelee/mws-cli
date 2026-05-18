@@ -50,6 +50,11 @@ pub const DEFAULT_SCOPES: &[&str] = &[
     "People.Read",
 
     // --- Teams (user-level only) ---
+    // Chat.ReadWrite covers reading the user's own chats and messages.
+    // ChannelMessage.Read.All is INTENTIONALLY NOT here: it requires admin
+    // consent and is subject to Microsoft's "Protected APIs for Teams"
+    // policy, so adding it breaks user-consent sign-in. Opt-in via
+    // `--scope ChannelMessage.Read.All` after admin pre-consent.
     "Presence.Read",
     "Chat.ReadWrite",
     "Chat.Create",

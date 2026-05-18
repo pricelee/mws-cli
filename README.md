@@ -208,6 +208,8 @@ These typically need admin approval — opt in only when you know your tenant al
 | `User.Read.All` | All users in the org |
 | `Group.Read.All` / `Group.ReadWrite.All` | All groups |
 | `OnlineMeetings.ReadWrite` | Create/manage Teams meetings |
+| `ChannelMessage.Read.All` | Read Teams channel messages (also gated by Microsoft "Protected APIs for Teams") |
+| `Chat.Read.All` | Read all chats in the tenant, not just your own |
 | `Mail.Send.Shared` | Send from a shared mailbox |
 | `Calendars.ReadWrite.Shared` | Read/write shared calendars |
 
