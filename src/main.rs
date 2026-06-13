@@ -6,6 +6,7 @@ mod errors;
 mod graph;
 mod keyring;
 mod output;
+mod remediation;
 mod safety;
 
 use clap::Parser;
@@ -40,13 +41,24 @@ async fn main() -> ExitCode {
     match result {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
-            errors::print(&e);
+            // Safety refusals keep their exact message and exit code 4.
             if e.downcast_ref::<safety::SafetyRefused>().is_some() {
-                // exit code 4 == "permission/safety refused" per the M0 spec.
-                ExitCode::from(4)
-            } else {
-                ExitCode::FAILURE
+                errors::print(&e);
+                return ExitCode::from(4);
             }
+            // A command that built its own remediation (e.g. an `auth login`
+            // consent failure, which knows the requested scopes).
+            if let Some(ce) = e.downcast_ref::<remediation::ConsentError>() {
+                remediation::print(&ctx, &ce.message, Some(&ce.remediation));
+                return ExitCode::from(ce.exit_code);
+            }
+            // Runtime permission/consent failures detected from the error itself.
+            if let Some((code, rem)) = remediation::analyze_runtime(&ctx, &e) {
+                remediation::print(&ctx, &format!("{e:#}"), rem.as_ref());
+                return ExitCode::from(code);
+            }
+            errors::print(&e);
+            ExitCode::FAILURE
         }
     }
 }

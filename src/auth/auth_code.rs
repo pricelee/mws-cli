@@ -143,11 +143,16 @@ pub fn await_callback(server: tiny_http::Server, timeout: Duration) -> Result<(S
         let mut code = None;
         let mut state = None;
         let mut err = None;
+        let mut err_desc = None;
         for (k, v) in parsed.query_pairs() {
             match k.as_ref() {
                 "code" => code = Some(v.into_owned()),
                 "state" => state = Some(v.into_owned()),
                 "error" => err = Some(v.into_owned()),
+                // Carry the AADSTS detail so consent/admin failures on the
+                // browser path are detectable (the redirect's `error` code is
+                // often a generic `access_denied`; the AADSTS number lives here).
+                "error_description" => err_desc = Some(v.into_owned()),
                 _ => {}
             }
         }
@@ -157,7 +162,7 @@ pub fn await_callback(server: tiny_http::Server, timeout: Duration) -> Result<(S
         );
         let _ = req.respond(resp);
         if let Some(e) = err {
-            return Err(AuthError::OAuth { error: e, description: String::new() });
+            return Err(AuthError::OAuth { error: e, description: err_desc.unwrap_or_default() });
         }
         match (code, state) {
             (Some(c), Some(s)) => return Ok((c, s)),
@@ -243,5 +248,32 @@ mod tests {
         assert_eq!(code, "ABC");
         assert_eq!(state, "XYZ");
         handle.join().unwrap();
+    }
+
+    #[test]
+    fn loopback_callback_preserves_error_description() {
+        // A browser-path consent failure: the redirect carries error=access_denied
+        // plus the AADSTS detail in error_description. await_callback must thread
+        // that detail through so consent detection works on the browser flow.
+        let (server, redirect) = loopback().unwrap();
+        let url = format!(
+            "{redirect}?error=access_denied&error_description=AADSTS90094%3A+admin+approval+required&state=XYZ"
+        );
+        let handle = std::thread::spawn(move || {
+            let resp = reqwest::blocking::get(&url).unwrap();
+            let _ = resp.text();
+        });
+        let err = await_callback(server, Duration::from_secs(5)).unwrap_err();
+        handle.join().unwrap();
+        match err {
+            AuthError::OAuth { error, description } => {
+                assert_eq!(error, "access_denied");
+                assert!(
+                    description.contains("AADSTS90094"),
+                    "error_description was discarded: {description:?}"
+                );
+            }
+            other => panic!("expected OAuth error, got {other:?}"),
+        }
     }
 }

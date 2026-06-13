@@ -79,7 +79,9 @@ async fn login(ctx: &CliContext, args: LoginArgs) -> anyhow::Result<()> {
         } else {
             println!("Go to {} and enter code {}", auth.verification_uri, auth.user_code);
         }
-        let grant = device_code::poll(&http, &endpoints, &ctx.client_id, &auth).await?;
+        let grant = device_code::poll(&http, &endpoints, &ctx.client_id, &auth)
+            .await
+            .map_err(|e| map_login_error(ctx, &scopes, e))?;
         device_code::apply_grant(&mut account, grant);
     } else {
         let (server, redirect_uri) = auth_code::loopback()?;
@@ -87,17 +89,60 @@ async fn login(ctx: &CliContext, args: LoginArgs) -> anyhow::Result<()> {
         let url_for_browser = args.authorize_url.clone().unwrap_or_else(|| req.authorize_url.to_string());
         println!("Opening {url_for_browser}");
         let _ = open_browser(&url_for_browser);
-        let (code, state) = auth_code::await_callback(server, Duration::from_secs(300))?;
+        let (code, state) = auth_code::await_callback(server, Duration::from_secs(300))
+            .map_err(|e| map_login_error(ctx, &scopes, e))?;
         if state != req.state {
             anyhow::bail!("OAuth state mismatch");
         }
-        let grant = auth_code::exchange_code(&http, &endpoints, &ctx.client_id, &redirect_uri, &code, &req.pkce.verifier).await?;
+        let grant = auth_code::exchange_code(&http, &endpoints, &ctx.client_id, &redirect_uri, &code, &req.pkce.verifier)
+            .await
+            .map_err(|e| map_login_error(ctx, &scopes, e))?;
         auth_code::apply_grant(&mut account, grant);
     }
 
     ctx.store.save(&account)?;
     println!("Saved account '{}' for tenant '{}'.", account.name, account.tenant);
     Ok(())
+}
+
+/// Does this sign-in failure mean the tenant requires admin consent for one of
+/// the requested scopes? Azure signals this with `AADSTS90094` (admin approval
+/// required) or `AADSTS65001` (no consent recorded), or `consent_required` /
+/// "admin approval" wording in the OAuth error description.
+fn is_consent_error(err: &crate::auth::AuthError) -> bool {
+    if let crate::auth::AuthError::OAuth { error, description } = err {
+        let d = description.to_ascii_lowercase();
+        return error == "consent_required"
+            || d.contains("aadsts90094")
+            || d.contains("aadsts65001")
+            || d.contains("admin approval")
+            || (d.contains("admin") && d.contains("consent"));
+    }
+    false
+}
+
+/// Turn a sign-in failure into a remediable consent error when it is one — the
+/// requested scopes are known precisely here, so we target the admin-requiring
+/// subset (falling back to the full set when the heuristic flags none, since
+/// Azure has authoritatively said admin consent is required). Non-consent errors
+/// pass through unchanged.
+fn map_login_error(
+    ctx: &CliContext,
+    requested: &[String],
+    err: crate::auth::AuthError,
+) -> anyhow::Error {
+    use crate::remediation::{admin_subset_or_all, build, ConsentError, ConsentKind};
+    if is_consent_error(&err) {
+        let scopes = admin_subset_or_all(requested);
+        let remediation = build(ctx, ConsentKind::AdminConsent, scopes);
+        return ConsentError {
+            message: format!("sign-in needs admin consent: {err}"),
+            exit_code: 3,
+            remediation,
+        }
+        .into();
+    }
+    err.into()
 }
 
 async fn logout(ctx: &CliContext, args: crate::cli::LogoutArgs) -> anyhow::Result<()> {
@@ -137,96 +182,11 @@ fn is_graphical_desktop() -> bool {
     false
 }
 
-/// Microsoft's hosted "your consent was recorded" page. Public clients
-/// like the Microsoft Graph CLI app are registered with this redirect, so
-/// the admin's browser lands somewhere meaningful after granting consent.
-const DEFAULT_ADMIN_REDIRECT: &str = "https://login.microsoftonline.com/common/oauth2/nativeclient";
-
-/// Build the admin-consent URL for a given tenant + client + scope set.
-/// Pure function — easy to unit-test.
-pub(crate) fn build_admin_consent_url(
-    tenant: &str,
-    client_id: &str,
-    scopes: &[String],
-    redirect_uri: &str,
-) -> String {
-    use url::Url;
-    // v2 endpoint (`/v2.0/adminconsent`) honors the `scope` query param so the
-    // admin consents only to what we list. The v1 endpoint (`/adminconsent`
-    // without the version) ignores `scope` and falls back to the app's static
-    // permissions, which for Microsoft Graph CLI is a much broader set and
-    // would surface admin-only scopes the user never asked for.
-    let mut url = Url::parse(&format!(
-        "https://login.microsoftonline.com/{tenant}/v2.0/adminconsent"
-    ))
-    .expect("valid base url");
-    url.query_pairs_mut()
-        .append_pair("client_id", client_id)
-        .append_pair("redirect_uri", redirect_uri)
-        .append_pair("scope", &scopes.join(" "));
-    url.to_string()
-}
-
-/// `common` / `organizations` / `consumers` are Microsoft's multi-tenant
-/// placeholders — they tell the IdP "let the user pick a tenant at sign-in",
-/// but they're useless as a target for tenant-wide admin consent (the admin
-/// would have to manually pick the right tenant in their browser).
-fn is_placeholder_tenant(t: &str) -> bool {
-    matches!(t, "common" | "organizations" | "consumers")
-}
-
-/// Resolve the tenant to target for admin-consent:
-/// 1. Honor `--tenant` if it's a concrete tenant (not a placeholder).
-/// 2. Otherwise read the signed-in account's stored tenant.
-/// 3. If the account exists but its tenant is still a placeholder (e.g. it was
-///    created before 0.0.4 captured `tid` at login), try to extract `tid` from
-///    the cached id_token now and persist the promotion.
-/// 4. Fall back to "organizations" — Microsoft explicitly REJECTS "common" and
-///    "consumers" at /v2.0/adminconsent with AADSTS9002328. "organizations" is
-///    the only generic value Microsoft accepts there.
-fn resolve_admin_tenant(ctx: &CliContext) -> String {
-    if !is_placeholder_tenant(&ctx.tenant) {
-        return ctx.tenant.clone();
-    }
-    if let Ok(mut account) = ctx.store.load(&ctx.account_name) {
-        if !is_placeholder_tenant(&account.tenant) {
-            return account.tenant;
-        }
-        // Lazy promotion for pre-0.0.4 accounts: id_token is cached but the
-        // tenant field still shows "common". Extract tid now and save it.
-        if let Some(it) = account.id_token.as_deref() {
-            if let Some(tid) = crate::auth::token::extract_tid(it) {
-                account.tenant = tid.clone();
-                let _ = ctx.store.save(&account);
-                return tid;
-            }
-        }
-    }
-    "organizations".to_string()
-}
-
-/// Identity of the currently signed-in user, derived from cached id_token
-/// claims. Returns a display string like `"Lee Junho <pricelee@contoso.com>"`,
-/// or None if no useful identity is cached.
-fn current_requester_label(ctx: &CliContext) -> Option<String> {
-    let account = ctx.store.load(&ctx.account_name).ok()?;
-    let id_token = account.id_token.as_deref()?;
-    let claims = crate::auth::token::extract_claims(id_token)?;
-    let name = claims.get("name").and_then(|v| v.as_str());
-    let upn = claims
-        .get("preferred_username")
-        .or_else(|| claims.get("upn"))
-        .or_else(|| claims.get("email"))
-        .and_then(|v| v.as_str());
-    match (name, upn) {
-        (Some(n), Some(u)) => Some(format!("{n} <{u}>")),
-        (Some(n), None) => Some(n.to_string()),
-        (None, Some(u)) => Some(u.to_string()),
-        (None, None) => None,
-    }
-}
-
 async fn admin_consent(ctx: &CliContext, args: AdminConsentArgs) -> anyhow::Result<()> {
+    use crate::remediation::{
+        build_admin_consent_url, current_requester_label, resolve_admin_tenant,
+        DEFAULT_ADMIN_REDIRECT,
+    };
     let scopes = compute_scopes(args.no_default_scopes, &args.exclude_scopes, &args.scopes)?;
     let redirect_uri = args.redirect_uri.as_deref().unwrap_or(DEFAULT_ADMIN_REDIRECT);
     let tenant = resolve_admin_tenant(ctx);
@@ -359,6 +319,44 @@ fn build_windows_cmd_arg(url: &str) -> String {
 }
 
 #[cfg(test)]
+mod consent_detection_tests {
+    use super::is_consent_error;
+    use crate::auth::AuthError;
+
+    fn oauth(error: &str, description: &str) -> AuthError {
+        AuthError::OAuth { error: error.into(), description: description.into() }
+    }
+
+    #[test]
+    fn detects_aadsts90094_admin_approval() {
+        assert!(is_consent_error(&oauth(
+            "consent_required",
+            "AADSTS90094: The grant requires admin permission."
+        )));
+    }
+
+    #[test]
+    fn detects_aadsts65001_no_consent() {
+        assert!(is_consent_error(&oauth(
+            "invalid_grant",
+            "AADSTS65001: The user or administrator has not consented."
+        )));
+    }
+
+    #[test]
+    fn detects_plain_consent_required_error_code() {
+        assert!(is_consent_error(&oauth("consent_required", "")));
+    }
+
+    #[test]
+    fn ignores_unrelated_oauth_errors() {
+        assert!(!is_consent_error(&oauth("invalid_client", "AADSTS7000215: bad secret")));
+        assert!(!is_consent_error(&AuthError::Timeout));
+        assert!(!is_consent_error(&AuthError::Cancelled));
+    }
+}
+
+#[cfg(test)]
 mod scope_tests {
     use super::compute_scopes;
     use crate::auth::DEFAULT_SCOPES;
@@ -408,44 +406,6 @@ mod scope_tests {
     fn no_default_without_extra_errors() {
         let err = compute_scopes(true, &[], &[]).unwrap_err();
         assert!(err.to_string().contains("no scopes requested"));
-    }
-
-    #[test]
-    fn admin_consent_url_has_required_params() {
-        let url = super::build_admin_consent_url(
-            "contoso.onmicrosoft.com",
-            "14d82eec-204b-4c2f-b7e8-296a70dab67e",
-            &["User.Read".into(), "Sites.Read.All".into()],
-            super::DEFAULT_ADMIN_REDIRECT,
-        );
-        assert!(url.starts_with("https://login.microsoftonline.com/contoso.onmicrosoft.com/v2.0/adminconsent?"));
-        assert!(url.contains("client_id=14d82eec-204b-4c2f-b7e8-296a70dab67e"));
-        // scope is space-separated, then URL-encoded to %20:
-        assert!(url.contains("scope=User.Read+Sites.Read.All") || url.contains("scope=User.Read%20Sites.Read.All"));
-        assert!(url.contains("redirect_uri="));
-    }
-
-    #[test]
-    fn admin_consent_url_uses_whatever_tenant_we_pass() {
-        // The URL builder is dumb on purpose — caller is responsible for
-        // passing a Microsoft-accepted tenant value. The placeholder-promotion
-        // happens up in resolve_admin_tenant().
-        let url = super::build_admin_consent_url(
-            "organizations",
-            "X",
-            &["openid".into()],
-            super::DEFAULT_ADMIN_REDIRECT,
-        );
-        assert!(url.starts_with("https://login.microsoftonline.com/organizations/v2.0/adminconsent?"));
-    }
-
-    #[test]
-    fn is_placeholder_recognizes_microsoft_aliases() {
-        assert!(super::is_placeholder_tenant("common"));
-        assert!(super::is_placeholder_tenant("organizations"));
-        assert!(super::is_placeholder_tenant("consumers"));
-        assert!(!super::is_placeholder_tenant("contoso.onmicrosoft.com"));
-        assert!(!super::is_placeholder_tenant("a1b2c3d4-e5f6-7890-abcd-ef1234567890"));
     }
 
     #[test]

@@ -238,6 +238,19 @@ The URL points to Microsoft's `/{tenant}/adminconsent` endpoint. When the admin 
 
 **Tenant auto-detection:** if you've already signed in once, `mws-cli` captures your real tenant id from the id_token and uses it automatically — you don't need `--tenant`. Pass it only if you want to target a different tenant than you signed in to.
 
+### Automatic remediation (you don't have to know any of this up front)
+
+You rarely need to reach for `admin-consent` manually. When a command — or `auth login` itself — fails because a scope is missing or ungranted, `mws-cli` diagnoses it and prints the next step for you:
+
+- **You can grant it yourself** → it tells you the exact `mws-cli auth login --scope <SCOPE>` to run. No admin involved.
+- **It needs admin consent** → it prints a ready-to-send **admin-consent URL** (scoped to the minimum needed, targeting your tenant) plus a paste-ready message for your admin, and the steps to finish once they accept.
+
+When a runtime call lists several acceptable scopes, `mws-cli` prefers one you can self-consent to, so you only escalate to an admin when there's genuinely no self-service path.
+
+After your admin accepts, your cached token still doesn't have the new scope — re-run `mws-cli auth login --scope <SCOPE>` once (it succeeds silently now), then re-run your original command. `mws-cli` spells these steps out in the failure message.
+
+**Exit codes:** a sign-in that needs admin consent exits `3` (auth); a runtime Graph 403 insufficient-scope exits `4` (permission). In JSON output mode (the non-TTY default) the failure carries a structured `remediation` object on stderr (`type`, `scopes`, `consent_url`, `next_steps`) so agents can act on it — see `mws-cli describe`.
+
 Full machine-readable catalog: `mws-cli describe scopes`.
 
 ## Agent / scripting surface
@@ -249,6 +262,7 @@ Full machine-readable catalog: `mws-cli describe scopes`.
 - **`--dry-run`** on every write surfaces the exact prepared HTTP request — agents inspect before sending, retry deterministically, or hand-edit the body and replay through `mws-cli raw`.
 - **Destructive-op guard** — `DELETE` and `POST .../delete|/permanentDelete|/revokeGrants|/archive` prompt on TTY; non-TTY callers must pass `--yes` or exit 4. No silent damage.
 - **Stable exit codes** — 0 ok, 1 generic, 2 usage, 3 auth, 4 permission/safety, 5 network, 6 server, 7 throttled, 8 not-found, 9 conflict.
+- **Actionable consent errors** — permission/consent failures (exit 3/4) carry a structured `remediation` object on stderr (`type`, `scopes`, `consent_url`, `next_steps`) so an agent can forward the admin-consent URL or run the self-consent command without scraping text. See [Automatic remediation](#automatic-remediation-you-dont-have-to-know-any-of-this-up-front).
 
 ## Shell quoting on Windows
 

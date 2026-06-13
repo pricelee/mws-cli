@@ -39,6 +39,27 @@ fn describe_root() -> Value {
             "behavior": "TTY users get a y/N prompt before any destructive operation. Non-TTY callers (agents, scripts) must pass --yes explicitly; otherwise mws-cli exits 4 with a hint.",
             "exit_code_safety_refused": 4,
         },
+        "exit_codes": {
+            "0": "ok",
+            "1": "generic error",
+            "2": "usage",
+            "3": "auth (includes sign-in that needs admin consent)",
+            "4": "permission/safety (includes Graph 403 insufficient-scope)",
+            "5": "network",
+            "6": "server (5xx)",
+            "7": "throttled",
+            "8": "not-found",
+            "9": "conflict",
+        },
+        "remediation": {
+            "description": "On a permission/consent failure (exit 3 or 4), mws-cli writes a remediation object to stderr when output is JSON, telling a non-admin how to get unblocked. Absent for non-actionable errors.",
+            "fields": {
+                "type": "admin_consent | user_consent",
+                "scopes": "scope(s) to grant",
+                "consent_url": "tenant admin-consent URL to forward to an admin (admin_consent only)",
+                "next_steps": "ordered commands to run once consent is granted",
+            },
+        },
         "commands": [
             {"name": "auth login", "description": "Sign in (device-code or auth-code+PKCE)"},
             {"name": "auth list", "description": "List cached accounts"},
@@ -65,6 +86,17 @@ fn describe_root() -> Value {
     })
 }
 
+/// One opt-in scope entry. The `admin` flag is DERIVED from
+/// `remediation::requires_admin_consent` — the single source of truth — so the
+/// catalog can never drift from the runtime routing decision.
+fn opt_in_scope(scope: &str, description: &str) -> Value {
+    json!({
+        "scope": scope,
+        "description": description,
+        "admin": crate::remediation::requires_admin_consent(scope),
+    })
+}
+
 fn describe_scopes() -> Value {
     use crate::auth::DEFAULT_SCOPES;
     json!({
@@ -80,23 +112,24 @@ fn describe_scopes() -> Value {
             "people": ["People.Read"],
             "teams": ["Presence.Read", "Chat.ReadWrite", "Chat.Create", "Team.ReadBasic.All", "Channel.ReadBasic.All", "ChannelMessage.Send"],
         },
-        "common_opt_in": {
-            "Mail.Read": "Read mailbox (Mail.ReadWrite already covers this; rarely needed standalone)",
-            "Mail.Send.Shared": "Send from a shared mailbox",
-            "Calendars.ReadWrite.Shared": "Read/write shared calendars",
-            "Sites.Read.All": "SharePoint sites (typically requires admin consent)",
-            "Sites.ReadWrite.All": "SharePoint sites write (admin)",
-            "Files.Read.All": "All files including shared (admin)",
-            "Files.ReadWrite.All": "All files write (admin)",
-            "Directory.Read.All": "Read directory (admin)",
-            "User.Read.All": "Read all users in the org (admin)",
-            "Group.Read.All": "Read all groups (admin)",
-            "OnlineMeetings.ReadWrite": "Create/manage Teams meetings",
-            "ChannelMessage.Read.All": "Read Teams channel messages (admin; also subject to Microsoft 'Protected APIs for Teams' policy)",
-            "ChannelMessage.ReadWrite": "Read + write channel messages (admin)",
-            "Chat.Read.All": "Read all chats in the tenant, not just your own (admin)",
-            "TeamMember.ReadWrite.All": "Add/remove team members (admin)",
-        },
+        "admin_note": "`admin: true` means the scope is gated behind tenant admin consent — a non-admin who requests it will be routed to `mws-cli auth admin-consent`. Scopes in `default` are user-consentable even when they end in `.All` (e.g. Team.ReadBasic.All).",
+        "common_opt_in": [
+            opt_in_scope("Mail.Read", "Read mailbox (Mail.ReadWrite already covers this; rarely needed standalone)"),
+            opt_in_scope("Mail.Send.Shared", "Send from a shared mailbox"),
+            opt_in_scope("Calendars.ReadWrite.Shared", "Read/write shared calendars"),
+            opt_in_scope("Sites.Read.All", "SharePoint sites"),
+            opt_in_scope("Sites.ReadWrite.All", "SharePoint sites write"),
+            opt_in_scope("Files.Read.All", "All files including shared"),
+            opt_in_scope("Files.ReadWrite.All", "All files write"),
+            opt_in_scope("Directory.Read.All", "Read directory"),
+            opt_in_scope("User.Read.All", "Read all users in the org"),
+            opt_in_scope("Group.Read.All", "Read all groups"),
+            opt_in_scope("OnlineMeetings.ReadWrite", "Create/manage Teams meetings"),
+            opt_in_scope("ChannelMessage.Read.All", "Read Teams channel messages (also subject to Microsoft 'Protected APIs for Teams' policy)"),
+            opt_in_scope("ChannelMessage.ReadWrite", "Read + write channel messages"),
+            opt_in_scope("Chat.Read.All", "Read all chats in the tenant, not just your own"),
+            opt_in_scope("TeamMember.ReadWrite.All", "Add/remove team members"),
+        ],
         "command_requires": {
             "whoami": ["User.Read"],
             "mail send": ["Mail.Send"],
@@ -108,7 +141,7 @@ fn describe_scopes() -> Value {
             "raw GET /teams/.../channels/.../messages": ["ChannelMessage.Read.All (admin)"],
             "raw POST /teams/.../channels/.../messages": ["ChannelMessage.Send"],
         },
-        "how_to_widen": "Re-run `mws-cli auth login --scope <SCOPE>` (repeatable) to request additional scopes. Microsoft prompts for incremental consent.",
+        "how_to_widen": "Re-run `mws-cli auth login --scope <SCOPE>` (repeatable) to request additional scopes. Microsoft prompts for incremental consent. If a scope needs admin consent, mws-cli prints a ready-to-send admin-consent URL on failure.",
     })
 }
 
@@ -433,6 +466,36 @@ mod tests {
     }
 
     #[test]
+    fn opt_in_admin_flag_is_derived_from_predicate() {
+        let v = describe_scopes();
+        let entries = v["common_opt_in"].as_array().unwrap();
+        assert!(!entries.is_empty());
+        // Every entry's `admin` flag must equal the single-source-of-truth predicate.
+        for e in entries {
+            let scope = e["scope"].as_str().unwrap();
+            let admin = e["admin"].as_bool().unwrap();
+            assert_eq!(
+                admin,
+                crate::remediation::requires_admin_consent(scope),
+                "catalog admin flag drifted from predicate for {scope}"
+            );
+        }
+        // Pin a couple of concrete expectations so the wiring can't silently invert.
+        let by_scope = |s: &str| entries.iter().find(|e| e["scope"] == s).unwrap()["admin"].as_bool().unwrap();
+        assert!(by_scope("Sites.Read.All"), "Sites.Read.All should be admin");
+        assert!(!by_scope("Mail.Read"), "Mail.Read should be user-consentable");
+    }
+
+    #[test]
+    fn root_publishes_exit_codes_and_remediation_schema() {
+        let v = describe_root();
+        assert!(v["exit_codes"]["3"].as_str().unwrap().contains("auth"));
+        assert!(v["exit_codes"]["4"].as_str().unwrap().contains("permission"));
+        assert!(v["remediation"]["fields"]["type"].is_string());
+        assert!(v["remediation"]["fields"]["consent_url"].is_string());
+    }
+
+    #[test]
     fn describe_teams_subcommands() {
         for name in [
             "teams list",
@@ -478,7 +541,7 @@ mod tests {
     fn describe_known_command_returns_schema() {
         let v = describe_command(&["raw".into()]).unwrap();
         assert_eq!(v["name"], "raw");
-        assert!(v["examples"].as_array().unwrap().len() > 0);
+        assert!(!v["examples"].as_array().unwrap().is_empty());
     }
 
     #[test]
