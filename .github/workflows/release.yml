@@ -1,0 +1,54 @@
+name: release
+
+# Publishes the crate to crates.io when a version tag is pushed.
+#
+# To cut a release:
+#   1. Bump `version` in Cargo.toml (and let Cargo.lock update), land it on main.
+#   2. Tag that commit and push the tag:
+#        git tag v0.0.9 && git push origin v0.0.9
+#   3. This workflow verifies the tag matches Cargo.toml, runs the tests, and
+#      publishes. crates.io rejects re-uploading an existing version, so each
+#      release needs a fresh version number.
+#
+# Requires a repository secret `CARGO_REGISTRY_TOKEN` (a crates.io API token):
+#   GitHub → Settings → Secrets and variables → Actions → New repository secret.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish to crates.io
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo build
+        uses: Swatinem/rust-cache@v2
+
+      - name: Verify tag matches Cargo.toml version
+        shell: bash
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          ver="$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].version')"
+          echo "tag=$tag cargo=$ver"
+          if [ "$tag" != "$ver" ]; then
+            echo "::error::tag v$tag does not match Cargo.toml version $ver" >&2
+            exit 1
+          fi
+
+      - name: Test
+        run: cargo test --features test-helpers --locked
+
+      - name: Publish
+        run: cargo publish --locked
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
